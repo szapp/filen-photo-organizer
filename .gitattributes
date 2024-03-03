@@ -1,1 +1,2 @@
 * text=auto eol=lf
+/action/dist/* -diff linguist-generated=true

@@ -1,0 +1,26 @@
+name: Organize photos
+# For an easy to use template visit https://github.com/szapp/filen-photo-organizer-template
+
+# Run very ten minutes between 5:00 and 22:00 UTC or by manual dispatch
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/10 5-22 * * *'
+
+# The configuration is completely outsourced into GitHub Action variables and secrets
+# This allows to update the settings without altering the scripts or pushing changes to the repository
+# Never expose any sensitive information directly, and always use GitHub secrets where necessary
+jobs:
+  organize:
+    name: Organize photos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: szapp/filen-photo-organizer@v1
+        with:
+          email: ${{ secrets.FILEN_EMAIL }}
+          password: ${{ secrets.FILEN_PASSWORD }}
+          twoFactorCode: ${{ secrets.FILEN_TFA }}
+          rootPath: ${{ vars.ROOT_PATH }}
+          dirPattern: ${{ vars.DIR_PATTERN }}
+          filePattern: ${{ vars.FILE_PATTERN }}
+          dryRun: false
