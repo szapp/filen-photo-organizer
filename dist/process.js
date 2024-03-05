@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const exifr_1 = __importDefault(require("exifr"));
+const geo_tz_1 = require("geo-tz");
 const heic_jpg_exif_1 = __importDefault(require("heic-jpg-exif"));
 const luxon_1 = require("luxon");
 const path_1 = require("path");
@@ -19,8 +20,10 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         });
         if (!stats.isFile())
             return;
+        const useDateTime = dirPattern.length > 0 || filePattern.length > 0;
         let dateTaken;
         let fileContents;
+        let tz = luxon_1.DateTime.now().zoneName;
         const { mime } = stats;
         // Look for date-created in EXIF metadata
         if (mime === 'image/jpeg' ||
@@ -33,42 +36,76 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             fileContents = await filen.fs().readFile({
                 path: filePath,
             });
-            // Retrieve date-taken from EXIF
-            const exifDate = (_a = (await exifr_1.default.parse(fileContents, ['DateTimeOriginal']))) === null || _a === void 0 ? void 0 : _a.DateTimeOriginal;
-            if (typeof exifDate !== 'undefined')
-                dateTaken = luxon_1.DateTime.fromJSDate(exifDate, { zone: 'utc' }).toLocal();
-        }
-        // Fall back to date in file name or file creation date or file modification date
-        if (!dateTaken) {
-            const dateCreated = luxon_1.DateTime.fromMillis(stats.birthtimeMs, { zone: 'utc' }).toLocal();
-            const dateModified = luxon_1.DateTime.fromMillis(stats.mtimeMs, { zone: 'utc' }).toLocal();
-            const baseName = path_1.posix.basename(fileName, fileExt);
-            const regex = /(?<!\d)(?<year>(?:19|20)?\d{2})(?:_|-|\.)?(?<month>0[1-9]|1[0-2])(?:_|-|\.)?(?<day>[0-3]\d)(?:_|-|\.)?(?<hour>[0-1][0-9]|2[0-4])?(?:_|-|\.)?(?<min>[0-6]\d)?(?:_|-|\.)?(?<sec>[0-6]\d)?/;
-            const match = baseName.match(regex);
-            if (match) {
-                const { year: yy, month, day, hour, min, sec } = match.groups;
-                let year = Number(yy);
-                if (year < 100) {
-                    const currentYear = Number(String(new Date().getFullYear()).substring(2));
-                    year += year > currentYear ? 1900 : 2000;
+            // If no date-time related operations are desired, skip this block in favor of performance
+            if (useDateTime) {
+                // Retrieve time zone based off of GPS data
+                try {
+                    const { latitude, longitude } = await exifr_1.default.gps(fileContents);
+                    const tzCandidates = (0, geo_tz_1.find)(latitude, longitude);
+                    if (tzCandidates.length > 0 && luxon_1.DateTime.now().setZone(tzCandidates[0]).isValid) {
+                        tz = tzCandidates[0];
+                    }
                 }
-                // Ensure correct timezone for comparison
-                const fileNameDate = luxon_1.DateTime.fromISO(`${year}-${month}-${day}T${hour !== null && hour !== void 0 ? hour : '12'}:${min !== null && min !== void 0 ? min : '00'}:${sec !== null && sec !== void 0 ? sec : '00'}`);
-                // Cross-check if date matches file times
-                const sameDayCreated = fileNameDate.hasSame(dateCreated, 'day');
-                const sameDayModified = fileNameDate.hasSame(dateModified, 'day');
-                if (sameDayCreated && sameDayModified)
-                    dateTaken = luxon_1.DateTime.min(dateCreated, dateModified);
-                else if (sameDayCreated)
-                    dateTaken = dateCreated;
-                else if (sameDayModified)
-                    dateTaken = dateModified;
-                else
-                    dateTaken = fileNameDate;
+                catch (_b) {
+                    // Fall back and assume default time zone
+                }
+                // Retrieve date-taken from EXIF (as raw string! exifr converts to Date in system time zone - which is incorrect here)
+                const exifDate = (_a = (await exifr_1.default.parse(fileContents, { pick: ['DateTimeOriginal'], reviveValues: false }))) === null || _a === void 0 ? void 0 : _a.DateTimeOriginal;
+                if (typeof exifDate === 'string') {
+                    // Parse string date: Either 'yyyy-MM-dd HH:mm:ss UTC' or 'yyyy:MM:dd HH:mm:ss'
+                    // eslint-disable-next-line quotes
+                    let exifDateParsed = luxon_1.DateTime.fromFormat(exifDate, "yyyy-MM-dd HH:mm:ss 'UTC'", { zone: 'utc' }).setZone(tz);
+                    if (!exifDateParsed.isValid) {
+                        exifDateParsed = luxon_1.DateTime.fromFormat(exifDate, 'yyyy:MM:dd HH:mm:ss', { zone: tz });
+                    }
+                    // Fallback to only date and possibly omit time (yet mind UTC)
+                    if (!exifDateParsed.isValid) {
+                        const [year, month, day, hour, minute, second] = exifDate
+                            .trim()
+                            .split(/[-: ]/g)
+                            .map((ele) => (typeof ele === 'string' ? Number(ele) : undefined));
+                        exifDateParsed = luxon_1.DateTime.fromObject({ year, month, day, hour: hour !== null && hour !== void 0 ? hour : 12, minute, second }, { zone: exifDate.search(/utc/i) ? 'utc' : tz }).setZone(tz);
+                    }
+                    if (exifDateParsed.isValid)
+                        dateTaken = exifDateParsed;
+                }
             }
-            else {
-                // Fall back to file creation or modification date - whichever is older
-                dateTaken = luxon_1.DateTime.min(dateCreated, dateModified);
+        }
+        // Skip if no date-time related operations are desired
+        if (useDateTime) {
+            // Fall back to date in file name or file creation date or file modification date
+            if (!dateTaken) {
+                const dateCreated = luxon_1.DateTime.fromMillis(stats.birthtimeMs, { zone: 'utc' }).setZone(tz);
+                const dateModified = luxon_1.DateTime.fromMillis(stats.mtimeMs, { zone: 'utc' }).setZone(tz);
+                const baseName = path_1.posix.basename(fileName, fileExt);
+                const regex = /(?<!\d)(?<year>(?:19|20)?\d{2})(?:_|-|\.)?(?<month>0[1-9]|1[0-2])(?:_|-|\.)?(?<day>[0-3]\d)(?:_|-|\.)?(?<hour>[0-1][0-9]|2[0-4])?(?:_|-|\.)?(?<min>[0-6]\d)?(?:_|-|\.)?(?<sec>[0-6]\d)?/;
+                const match = baseName.match(regex);
+                if (match) {
+                    const res = match.groups;
+                    const [yy, month, day, hour, minute, second] = Object.values(res).map((ele) => typeof ele === 'string' ? Number(ele) : undefined);
+                    let year = Number(yy);
+                    if (year < 100) {
+                        const currentYear = Number(String(new Date().getFullYear()).substring(2));
+                        year += year > currentYear ? 1900 : 2000;
+                    }
+                    // Ensure correct timezone for comparison
+                    const fileNameDate = luxon_1.DateTime.fromObject({ year, month, day, hour: hour !== null && hour !== void 0 ? hour : 12, minute, second }, { zone: tz });
+                    // Cross-check if date matches file times
+                    const sameDayCreated = fileNameDate.hasSame(dateCreated, 'day');
+                    const sameDayModified = fileNameDate.hasSame(dateModified, 'day');
+                    if (sameDayCreated && sameDayModified)
+                        dateTaken = luxon_1.DateTime.min(dateCreated, dateModified);
+                    else if (sameDayCreated)
+                        dateTaken = dateCreated;
+                    else if (sameDayModified)
+                        dateTaken = dateModified;
+                    else
+                        dateTaken = fileNameDate;
+                }
+                else {
+                    // Fall back to file creation or modification date - whichever is older
+                    dateTaken = luxon_1.DateTime.min(dateCreated, dateModified);
+                }
             }
         }
         // Make path names
@@ -90,7 +127,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                     path: newDirPath,
                 });
             }
-            catch (_b) {
+            catch (_c) {
                 newDirContents = [];
             }
             const fileNamePattern = new RegExp(`^${newBaseName}(?:_(?<index>\\d{3}))?${fileExt}$`);

@@ -10,7 +10,7 @@ export default async function organizePhotos(
   rootPath: string,
   dirPattern: string = 'yyyy-MM',
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
-  timeZone: string = 'Europe/Berlin', // Filen.io location
+  fallbackTimeZone: string = 'Europe/Berlin', // Filen.io location
   dryRun: boolean = false
 ): Promise<void> {
   const filen: FilenSDK = new FilenSDK({
@@ -18,7 +18,7 @@ export default async function organizePhotos(
   })
 
   // Update time zone
-  Settings.defaultZone = timeZone
+  Settings.defaultZone = fallbackTimeZone
   if (DateTime.local().zoneName === null) throw new Error('Error: Invalid time zone. Please specify a valid IANA zone')
 
   try {
