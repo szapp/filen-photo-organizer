@@ -1,12 +1,17 @@
-import date from 'date-and-time';
-import exifr from 'exifr';
-import convert from 'heic-jpg-exif';
-import { posix } from 'path';
-export default async function processFile(filen, filePath, dirPattern = 'YYYY-MM', filePattern = 'YYYY-MM-DD_HH.mm.ss', writeAccess, dryRun = false) {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const date_and_time_1 = __importDefault(require("date-and-time"));
+const exifr_1 = __importDefault(require("exifr"));
+const heic_jpg_exif_1 = __importDefault(require("heic-jpg-exif"));
+const path_1 = require("path");
+async function processFile(filen, filePath, dirPattern = 'YYYY-MM', filePattern = 'YYYY-MM-DD_HH.mm.ss', writeAccess, dryRun = false) {
     var _a;
-    const fileName = posix.basename(filePath);
-    const rootPath = posix.dirname(filePath);
-    let fileExt = posix.extname(fileName);
+    const fileName = path_1.posix.basename(filePath);
+    const rootPath = path_1.posix.dirname(filePath);
+    let fileExt = path_1.posix.extname(fileName);
     try {
         // Only operate on files
         const stats = await filen.fs().stat({
@@ -29,13 +34,13 @@ export default async function processFile(filen, filePath, dirPattern = 'YYYY-MM
                 path: filePath,
             });
             // Retrieve date-taken from EXIF
-            dateTaken = (_a = (await exifr.parse(fileContents, ['DateTimeOriginal']))) === null || _a === void 0 ? void 0 : _a.DateTimeOriginal;
+            dateTaken = (_a = (await exifr_1.default.parse(fileContents, ['DateTimeOriginal']))) === null || _a === void 0 ? void 0 : _a.DateTimeOriginal;
         }
         // Fall back to date in file name or file creation date or file modification date
         if (!dateTaken) {
             const birthtimeMsDate = new Date(stats.birthtimeMs);
             const mtimeMsDate = new Date(stats.mtimeMs);
-            const baseName = posix.basename(fileName, fileExt);
+            const baseName = path_1.posix.basename(fileName, fileExt);
             const regex = /(?<!\d)(?<year>(?:19|20)?\d{2})(?:_|-|\.)?(?<month>0[1-9]|1[0-2])(?:_|-|\.)?(?<day>[0-3]\d)(?:_|-|\.)?(?<hour>[0-1][0-9]|2[0-4])?(?:_|-|\.)?(?<min>[0-6]\d)?(?:_|-|\.)?(?<sec>[0-6]\d)?/;
             const match = baseName.match(regex);
             if (match) {
@@ -48,9 +53,9 @@ export default async function processFile(filen, filePath, dirPattern = 'YYYY-MM
                 }
                 const fileNameDate = new Date(year, month - 1, day, Number.isNaN(hour) ? 12 : hour, Number.isNaN(min) ? 0 : min, Number.isNaN(sec) ? 0 : sec);
                 // Cross-check if date matches file times
-                if (date.isSameDay(fileNameDate, birthtimeMsDate))
+                if (date_and_time_1.default.isSameDay(fileNameDate, birthtimeMsDate))
                     dateTaken = birthtimeMsDate;
-                else if (date.isSameDay(fileNameDate, mtimeMsDate))
+                else if (date_and_time_1.default.isSameDay(fileNameDate, mtimeMsDate))
                     dateTaken = mtimeMsDate;
                 else
                     dateTaken = fileNameDate;
@@ -61,12 +66,12 @@ export default async function processFile(filen, filePath, dirPattern = 'YYYY-MM
             }
         }
         // Make path names
-        const newDirName = dirPattern ? date.format(dateTaken, dirPattern) : '';
-        const newDirPath = posix.join(rootPath, newDirName);
-        let newBaseName = filePattern ? date.format(dateTaken, filePattern) : posix.basename(filePath, fileExt);
+        const newDirName = dirPattern ? date_and_time_1.default.format(dateTaken, dirPattern) : '';
+        const newDirPath = path_1.posix.join(rootPath, newDirName);
+        let newBaseName = filePattern ? date_and_time_1.default.format(dateTaken, filePattern) : path_1.posix.basename(filePath, fileExt);
         // Convert HEIF
         if (mime === 'image/heic' || mime === 'image/heif') {
-            fileContents = (await convert(fileContents));
+            fileContents = (await (0, heic_jpg_exif_1.default)(fileContents));
             fileExt = '.jpg';
         }
         // Check for existing files with the same name sequentially to avoid file name collisions
@@ -97,11 +102,11 @@ export default async function processFile(filen, filePath, dirPattern = 'YYYY-MM
                 for (let idx = 0; idx < newDirContents.length; idx++) {
                     const checkFileName = newDirContents[idx];
                     const checkFileContents = await filen.fs().readFile({
-                        path: posix.join(newDirPath, checkFileName),
+                        path: path_1.posix.join(newDirPath, checkFileName),
                     });
                     // Files are identical: Abort and delete one
                     if (!fileContents.compare(checkFileContents)) {
-                        console.log(`Delete '${fileName}', because it already exists: '${posix.join(newDirName, checkFileName)}'`);
+                        console.log(`Delete '${fileName}', because it already exists: '${path_1.posix.join(newDirName, checkFileName)}'`);
                         if (!dryRun) {
                             await filen.fs().unlink({
                                 path: filePath,
@@ -122,8 +127,8 @@ export default async function processFile(filen, filePath, dirPattern = 'YYYY-MM
             }
             // Rename (move) or upload and delete (convert)
             const newFileName = `${newBaseName}${fileExt}`;
-            const newFileSubpath = posix.join(newDirName, newFileName);
-            const newFilePath = posix.join(rootPath, newFileSubpath);
+            const newFileSubpath = path_1.posix.join(newDirName, newFileName);
+            const newFilePath = path_1.posix.join(rootPath, newFileSubpath);
             if (mime === 'image/heic' || mime === 'image/heif') {
                 console.log(`Convert '${fileName}' to '${newFileSubpath}'`);
                 if (!dryRun) {
@@ -140,9 +145,9 @@ export default async function processFile(filen, filePath, dirPattern = 'YYYY-MM
             else {
                 // Three-step process to prevent possible failure in filen-sdk if a file of the same name exists in the destication
                 const tmpFileName = `${newBaseName}_${fileName}`;
-                const tmpFilePath1 = posix.join(rootPath, tmpFileName);
-                const tmpFileSubpath2 = posix.join(newDirName, tmpFileName);
-                const tmpFilePath2 = posix.join(rootPath, tmpFileSubpath2);
+                const tmpFilePath1 = path_1.posix.join(rootPath, tmpFileName);
+                const tmpFileSubpath2 = path_1.posix.join(newDirName, tmpFileName);
+                const tmpFilePath2 = path_1.posix.join(rootPath, tmpFileSubpath2);
                 console.log(`Move '${fileName}' to '${newFileSubpath}'`);
                 if (!dryRun) {
                     // Rename file within same folder
@@ -176,4 +181,5 @@ export default async function processFile(filen, filePath, dirPattern = 'YYYY-MM
         console.log(`Error on '${fileName}': ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
     }
 }
+exports.default = processFile;
 //# sourceMappingURL=process.js.map

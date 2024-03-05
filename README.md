@@ -95,9 +95,12 @@ Install locally
 npm install github:szapp/filen-photo-organizer
 ```
 
-Import (ESM)
+Import
 
 ```typescript
+// JavaScript
+const organizePhotos = require('filen-photo-organizer')
+// TypeScript
 import organizePhotos from 'filen-photo-organizer'
 
 const main = async () => {

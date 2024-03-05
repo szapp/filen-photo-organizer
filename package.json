@@ -2,9 +2,7 @@
   "name": "filen-photo-organizer",
   "version": "1.0.0",
   "description": "Organize photos in filen.io drive",
-  "exports": "./dist/index.js",
   "main": "dist/index.js",
-  "type": "module",
   "scripts": {
     "build": "tsc",
     "lint": "eslint src/**/* --ext .js,.ts",

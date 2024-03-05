@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["ES2017"],
-    "module": "ESNext",
+    "module": "commonjs",
     "rootDir": "src",
     "moduleResolution": "node",
     "resolveJsonModule": true,

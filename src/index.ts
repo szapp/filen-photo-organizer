@@ -46,3 +46,5 @@ export default async function organizePhotos(
 
   console.log('Done')
 }
+
+module.exports = organizePhotos
