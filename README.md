@@ -111,11 +111,12 @@ const main = async () => {
     {
       email: 'filen-user@example.com',
       password: 'filen-password',
-      twoFactorCode: '123456', // Blank if not enabled
+      twoFactorCode: '123456', // Leave blank if not enabled
     },
     '/path/to/photos/',
     'yyyy-MM', // Directory pattern
-    'yyyy-MM-dd_HH.mm.ss' // File name pattern
+    'yyyy-MM-dd_HH.mm.ss', // File name pattern
+    'Europe/Berlin' // IANA time zone identifier
   )
 }
 
