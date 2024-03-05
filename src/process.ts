@@ -1,15 +1,15 @@
 import { Mutex } from 'async-mutex'
-import date from 'date-and-time'
 import exifr from 'exifr'
 import FilenSDK, { FSStats, FileMetadata } from '@filen/sdk'
 import convert from 'heic-jpg-exif'
+import { DateTime } from 'luxon'
 import { posix } from 'path'
 
 export default async function processFile(
   filen: FilenSDK,
   filePath: string,
-  dirPattern: string = 'YYYY-MM',
-  filePattern: string = 'YYYY-MM-DD_HH.mm.ss',
+  dirPattern: string = 'yyyy-MM',
+  filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
   writeAccess: Mutex,
   dryRun: boolean = false
 ): Promise<void> {
@@ -24,7 +24,7 @@ export default async function processFile(
     })
     if (!stats.isFile()) return
 
-    let dateTaken: Date
+    let dateTaken: DateTime
     let fileContents: Buffer
     const { mime } = stats as FileMetadata
 
@@ -43,13 +43,14 @@ export default async function processFile(
       })
 
       // Retrieve date-taken from EXIF
-      dateTaken = (await exifr.parse(fileContents, ['DateTimeOriginal']))?.DateTimeOriginal
+      const exifDate: Date = (await exifr.parse(fileContents, ['DateTimeOriginal']))?.DateTimeOriginal
+      if (typeof exifDate !== 'undefined') dateTaken = DateTime.fromJSDate(exifDate, { zone: 'utc' }).toLocal()
     }
 
     // Fall back to date in file name or file creation date or file modification date
     if (!dateTaken!) {
-      const birthtimeMsDate: Date = new Date(stats.birthtimeMs)
-      const mtimeMsDate: Date = new Date(stats.mtimeMs)
+      const dateCreated: DateTime = DateTime.fromMillis(stats.birthtimeMs, { zone: 'utc' }).toLocal()
+      const dateModified: DateTime = DateTime.fromMillis(stats.mtimeMs, { zone: 'utc' }).toLocal()
       const baseName: string = posix.basename(fileName, fileExt)
       const regex =
         /(?<!\d)(?<year>(?:19|20)?\d{2})(?:_|-|\.)?(?<month>0[1-9]|1[0-2])(?:_|-|\.)?(?<day>[0-3]\d)(?:_|-|\.)?(?<hour>[0-1][0-9]|2[0-4])?(?:_|-|\.)?(?<min>[0-6]\d)?(?:_|-|\.)?(?<sec>[0-6]\d)?/
@@ -63,36 +64,32 @@ export default async function processFile(
           min: string | undefined
           sec: string | undefined
         }
-        const res = match.groups as unknown as ReDateMatch
-        const [yy, month, day, hour, min, sec] = Object.values(res).map(Number)
-        let year: number = yy
+        const { year: yy, month, day, hour, min, sec } = match.groups as unknown as ReDateMatch
+        let year: number = Number(yy)
         if (year < 100) {
           const currentYear = Number(String(new Date().getFullYear()).substring(2))
           year += year > currentYear ? 1900 : 2000
         }
-        const fileNameDate: Date = new Date(
-          year,
-          month - 1,
-          day,
-          Number.isNaN(hour) ? 12 : hour,
-          Number.isNaN(min) ? 0 : min,
-          Number.isNaN(sec) ? 0 : sec
-        )
+        // Ensure correct timezone for comparison
+        const fileNameDate: DateTime = DateTime.fromISO(`${year}-${month}-${day}T${hour ?? '12'}:${min ?? '00'}:${sec ?? '00'}`)
 
         // Cross-check if date matches file times
-        if (date.isSameDay(fileNameDate, birthtimeMsDate)) dateTaken = birthtimeMsDate
-        else if (date.isSameDay(fileNameDate, mtimeMsDate)) dateTaken = mtimeMsDate
+        const sameDayCreated: boolean = fileNameDate.hasSame(dateCreated, 'day')
+        const sameDayModified: boolean = fileNameDate.hasSame(dateModified, 'day')
+        if (sameDayCreated && sameDayModified) dateTaken = DateTime.min(dateCreated, dateModified)
+        else if (sameDayCreated) dateTaken = dateCreated
+        else if (sameDayModified) dateTaken = dateModified
         else dateTaken = fileNameDate
       } else {
         // Fall back to file creation or modification date - whichever is older
-        dateTaken = birthtimeMsDate < mtimeMsDate ? birthtimeMsDate : mtimeMsDate
+        dateTaken = DateTime.min(dateCreated, dateModified)
       }
     }
 
     // Make path names
-    const newDirName: string = dirPattern ? date.format(dateTaken, dirPattern) : ''
+    const newDirName: string = dirPattern ? dateTaken.toFormat(dirPattern) : ''
     const newDirPath: string = posix.join(rootPath, newDirName)
-    let newBaseName: string = filePattern ? date.format(dateTaken, filePattern) : posix.basename(filePath, fileExt)
+    let newBaseName: string = filePattern ? dateTaken.toFormat(filePattern) : posix.basename(filePath, fileExt)
 
     // Convert HEIF
     if (mime === 'image/heic' || mime === 'image/heif') {

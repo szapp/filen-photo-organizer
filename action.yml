@@ -15,10 +15,13 @@ inputs:
     required: true
   dirPattern:
     description: 'Date pattern to sort the photos into (if empty, no directories will be created)'
-    default: 'YYYY-MM'
+    default: 'yyyy-MM'
   filePattern:
     description: 'Date pattern for renaming the files based on date taken (if empty, preserve original file name)'
-    default: 'YYYY-MM-DD_HH.mm.ss'
+    default: 'yyyy-MM-dd_HH.mm.ss'
+  timeZone:
+    description: 'Time zone to assume for photo organization, i.e. the time zone in which the photos were taken, as TZ / IANA (if empty, defaults to Europe/Berlin)'
+    default: 'Europe/Berlin'
   dryRun:
     description: 'Do not perform write operations on the filen.io'
     default: false

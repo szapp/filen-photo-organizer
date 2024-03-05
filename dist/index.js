@@ -28,13 +28,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const async_mutex_1 = require("async-mutex");
 const sdk_1 = __importDefault(require("@filen/sdk"));
+const luxon_1 = require("luxon");
 const OTPAuth = __importStar(require("otpauth"));
 const path_1 = require("path");
 const process_js_1 = __importDefault(require("./process.js"));
-async function organizePhotos(credentials, rootPath, dirPattern = 'YYYY-MM', filePattern = 'YYYY-MM-DD_HH.mm.ss', dryRun = false) {
+async function organizePhotos(credentials, rootPath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', timeZone = 'Europe/Berlin', // Filen.io location
+dryRun = false) {
     const filen = new sdk_1.default({
         metadataCache: true,
     });
+    // Update time zone
+    luxon_1.Settings.defaultZone = timeZone;
+    if (luxon_1.DateTime.local().zoneName === null)
+        throw new Error('Error: Invalid time zone. Please specify a valid IANA zone');
     try {
         await filen.login({
             email: credentials.email,
