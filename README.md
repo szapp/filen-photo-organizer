@@ -71,17 +71,17 @@ To allow usage without any programming experience, the configuration is outsourc
 > ⚠️ **Warning:** The contents of the secrets are very sensitive. Make sure to not publish them to GitHub or share them with anyone. It's best to only enter them into the designated secrets-setting. If exposed, these values allow arbitrary access to your Filen Drive.  
 > If the Filen SDK offers granular API Tokens for more secure access, this repository will be updated accordingly.
 
-| Secret         | Default               | Description                                                                                                 |
-| -------------- | --------------------- | ----------------------------------------------------------------------------------------------------------- |
-| FILEN_EMAIL    | _required_            | Filen account email                                                                                         |
-| FILEN_PASSWORD | _required_            | Filen account password                                                                                      |
-| FILEN_TFA      |                       | Filen account two-factor authentication secret, not the generated OTP (if enabled)                          |
+| Secret         | Default               | Description                                                                                              |
+| -------------- | --------------------- | -------------------------------------------------------------------------------------------------------- |
+| FILEN_EMAIL    | _required_            | Filen account email                                                                                      |
+| FILEN_PASSWORD | _required_            | Filen account password                                                                                   |
+| FILEN_TFA      |                       | Filen account two-factor authentication secret, not the generated OTP (if enabled)                       |
 |                |                       |
-| **Variable**   | **Default**           | **Description**                                                                                             |
-|                |                       |                                                                                                             |
-| ROOT_PATH      |                       | Path to the photo directory                                                                                 |
-| DIR_PATTERN    | `YYYY-MM`             | Date pattern to sort the photos into (if empty, no directories will be created). [Format][date-format-link] |
-| FILE_PATTERN   | `YYYY-MM-DD_HH.mm.ss` | Date pattern for renaming the files based on date-taken                                                     |
+| **Variable**   | **Default**           | **Description**                                                                                          |
+|                |                       |                                                                                                          |
+| ROOT_PATH      |                       | Path to the photo directory                                                                              |
+| DIR_PATTERN    | `YYYY-MM`             | Date pattern to sort the photos into (if '', no directories will be created). [Format][date-format-link] |
+| FILE_PATTERN   | `YYYY-MM-DD_HH.mm.ss` | Date pattern for renaming the files based on date-taken (if '', files will not be renamed)               |
 
 [date-format-link]: https://www.npmjs.com/package/date-and-time#formatdateobj-arg-utc
 
@@ -92,16 +92,13 @@ Secrets can be set in the repository settings in the section `Security` in `Secr
 Install locally
 
 ```bash
-git clone https://github.com/szapp/filen-photo-organizer.git
-cd filen-photo-organizer
-npm install
-npm build
+npm install github:szapp/filen-photo-organizer
 ```
 
 Import (ESM)
 
 ```typescript
-import organizePhotos from '../dist/index.js'
+import organizePhotos from 'filen-photo-organizer'
 
 const main = async () => {
   await organizePhotos(
