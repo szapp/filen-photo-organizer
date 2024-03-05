@@ -1,6 +1,6 @@
 {
   "name": "filen-photo-organizer-action",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "GitHub action that organizes photos in filen.io drive",
   "main": "lib/main.js",
   "scripts": {
