@@ -4,9 +4,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const exifr_1 = __importDefault(require("exifr"));
+const fs_1 = __importDefault(require("fs"));
 const geo_tz_1 = require("geo-tz");
 const heic_jpg_exif_1 = __importDefault(require("heic-jpg-exif"));
 const luxon_1 = require("luxon");
+const os_1 = __importDefault(require("os"));
 const path_1 = require("path");
 const uuid_1 = require("uuid");
 const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae';
@@ -26,7 +28,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         let dateTaken;
         let fileContents;
         let tz = luxon_1.DateTime.now().zoneName;
-        const { mime } = stats;
+        let { mime } = stats;
         // Look for date-created in EXIF metadata
         if (mime === 'image/jpeg' ||
             mime === 'image/png' ||
@@ -116,7 +118,14 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         let newBaseName = filePattern ? dateTaken.toFormat(filePattern) : path_1.posix.basename(filePath, fileExt);
         // Convert HEIF
         if (mime === 'image/heic' || mime === 'image/heif') {
-            fileContents = (await (0, heic_jpg_exif_1.default)(fileContents));
+            try {
+                fileContents = (await (0, heic_jpg_exif_1.default)(fileContents));
+            }
+            catch (e) {
+                if ((e === null || e === void 0 ? void 0 : e.message) !== 'Input is already a JPEG image')
+                    throw e;
+                mime = 'image/jpeg';
+            }
             fileExt = '.jpg';
         }
         // Check for existing files with the same name sequentially to avoid file name collisions
@@ -151,7 +160,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                     });
                     // Files are identical: Abort and delete one
                     if (!fileContents.compare(checkFileContents)) {
-                        console.log(`Delete '${fileName}', because it already exists: '${path_1.posix.join(newDirName, checkFileName)}'`);
+                        console.log(`Delete '${fileName}', because it already exists as '${path_1.posix.join(newDirName, checkFileName)}'`);
                         if (!dryRun) {
                             await filen.fs().unlink({
                                 path: filePath,
@@ -177,10 +186,18 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             if (mime === 'image/heic' || mime === 'image/heif') {
                 console.log(`Convert '${fileName}' to '${newFileSubpath}'`);
                 if (!dryRun) {
-                    await filen.fs().writeFile({
-                        content: fileContents,
+                    // In order to retain the modification date, write the file locally, upload it, and delete the local file
+                    const localTmpDirPath = path_1.posix.join(filen.config.tmpPath || os_1.default.tmpdir(), 'filen-sdk', 'filen-photo-organizer');
+                    const localTmpFilePath = path_1.posix.join(localTmpDirPath, (0, uuid_1.v5)(filePath, UNIQUE_FILENAME_NAMESPACE));
+                    if (!fs_1.default.existsSync(localTmpDirPath))
+                        fs_1.default.mkdirSync(localTmpDirPath, { recursive: true });
+                    fs_1.default.writeFileSync(localTmpFilePath, fileContents);
+                    fs_1.default.utimesSync(localTmpFilePath, stats.birthtimeMs / 1000, stats.mtimeMs / 1000);
+                    await filen.fs().upload({
                         path: newFilePath,
+                        source: localTmpFilePath,
                     });
+                    fs_1.default.unlinkSync(localTmpFilePath);
                     await filen.fs().unlink({
                         path: filePath,
                         permanent: false,
@@ -188,20 +205,10 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                 }
             }
             else {
-                // Two-step process to prevent possible failure in filen-sdk if a file of the same name exists in the destication
-                const tmpFileName = (0, uuid_1.v5)(`${newBaseName}_${fileName}`, UNIQUE_FILENAME_NAMESPACE) + fileExt; // Ensure reasonably short file path
-                const tmpFileSubpath = path_1.posix.join(newDirName, tmpFileName);
-                const tmpFilePath = path_1.posix.join(rootPath, tmpFileSubpath);
-                console.log(`Move '${fileName}' to '${newFileSubpath}' (via '${tmpFileSubpath}')`);
+                console.log(`Move '${fileName}' to '${newFileSubpath}'`);
                 if (!dryRun) {
-                    // Rename file in-place and then move it to the destination
                     await filen.fs().rename({
                         from: filePath,
-                        to: tmpFilePath,
-                    });
-                    // Rename moved file in-place to final file name
-                    await filen.fs().rename({
-                        from: tmpFilePath,
                         to: newFilePath,
                     });
                 }
@@ -211,8 +218,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             release();
         }
     }
-    catch (e) {
-        const error = e;
+    catch (error) {
         console.log(`Error on '${fileName}': ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
     }
 }
