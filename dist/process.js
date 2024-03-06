@@ -8,8 +8,6 @@ const geo_tz_1 = require("geo-tz");
 const heic_jpg_exif_1 = __importDefault(require("heic-jpg-exif"));
 const luxon_1 = require("luxon");
 const path_1 = require("path");
-const uuid_1 = require("uuid");
-const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae';
 async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', writeAccess, dryRun = false) {
     var _a;
     const fileName = path_1.posix.basename(filePath);
@@ -158,7 +156,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                     });
                     // Files are identical: Abort and delete one
                     if (!fileContents.compare(checkFileContents)) {
-                        console.log(`Delete '${fileName}', because it already exists: '${path_1.posix.join(newDirName, checkFileName)}'`);
+                        console.log(`Delete '${fileName}', because it already exists as '${path_1.posix.join(newDirName, checkFileName)}'`);
                         if (!dryRun) {
                             await filen.fs().unlink({
                                 path: filePath,
@@ -195,20 +193,10 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                 }
             }
             else {
-                // Two-step process to prevent possible failure in filen-sdk if a file of the same name exists in the destication
-                const tmpFileName = (0, uuid_1.v5)(`${newBaseName}_${fileName}`, UNIQUE_FILENAME_NAMESPACE) + fileExt; // Ensure reasonably short file path
-                const tmpFileSubpath = path_1.posix.join(newDirName, tmpFileName);
-                const tmpFilePath = path_1.posix.join(rootPath, tmpFileSubpath);
-                console.log(`Move '${fileName}' to '${newFileSubpath}' (via '${tmpFileSubpath}')`);
+                console.log(`Move '${fileName}' to '${newFileSubpath}'`);
                 if (!dryRun) {
-                    // Rename file in-place and then move it to the destination
                     await filen.fs().rename({
                         from: filePath,
-                        to: tmpFilePath,
-                    });
-                    // Rename moved file in-place to final file name
-                    await filen.fs().rename({
-                        from: tmpFilePath,
                         to: newFilePath,
                     });
                 }

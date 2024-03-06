@@ -5,9 +5,6 @@ import { find } from 'geo-tz'
 import convert from 'heic-jpg-exif'
 import { DateTime } from 'luxon'
 import { posix } from 'path'
-import { v5 as uuidv5 } from 'uuid'
-
-const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae'
 
 export default async function processFile(
   filen: FilenSDK,
@@ -180,7 +177,7 @@ export default async function processFile(
           })
           // Files are identical: Abort and delete one
           if (!fileContents.compare(checkFileContents)) {
-            console.log(`Delete '${fileName}', because it already exists: '${posix.join(newDirName, checkFileName)}'`)
+            console.log(`Delete '${fileName}', because it already exists as '${posix.join(newDirName, checkFileName)}'`)
             if (!dryRun) {
               await filen.fs().unlink({
                 path: filePath,
@@ -218,21 +215,10 @@ export default async function processFile(
           })
         }
       } else {
-        // Two-step process to prevent possible failure in filen-sdk if a file of the same name exists in the destication
-        const tmpFileName: string = uuidv5(`${newBaseName}_${fileName}`, UNIQUE_FILENAME_NAMESPACE) + fileExt // Ensure reasonably short file path
-        const tmpFileSubpath: string = posix.join(newDirName, tmpFileName)
-        const tmpFilePath: string = posix.join(rootPath, tmpFileSubpath)
-        console.log(`Move '${fileName}' to '${newFileSubpath}' (via '${tmpFileSubpath}')`)
+        console.log(`Move '${fileName}' to '${newFileSubpath}'`)
         if (!dryRun) {
-          // Rename file in-place and then move it to the destination
           await filen.fs().rename({
             from: filePath,
-            to: tmpFilePath,
-          })
-
-          // Rename moved file in-place to final file name
-          await filen.fs().rename({
-            from: tmpFilePath,
             to: newFilePath,
           })
         }
