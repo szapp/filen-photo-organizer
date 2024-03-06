@@ -18,6 +18,7 @@ Click the link above to set up the photo organizer for your own filen.io drive w
 - Automatic organization of photo files
 - Photos can be sorted into directories based on date taken (default 'yyyy-MM')
 - Photos can be renamed based on date taken (default 'yyyy-MM-dd_HH.mm.ss')
+- Date and time operations consider the time zone the photo was taken in (based on GPS metadata if available)
 - HEIC/HEIF photos are converted to JPEG while retaining the EXIF metadata
 - File name collision is prevented by incremental suffixes (i.e. 'filename_002.jpg')
 - Identical files are deleted in case they are uploaded again - based on date taken and content
@@ -31,7 +32,21 @@ This repository contains a GitHub Action that can be used without any coding kno
 
 The setup is explained in an easy to clone template repository: https://github.com/szapp/filen-photo-organizer-template or click the button above
 
-## Example script
+### V2
+
+Time zone information is now included when organizing the photos by date-taken.
+Before, time stamps in file and directory names were produced in the local time zone of the GitHub action.
+This produced incorrect file names, as GitHub Actions likely operate with a different system time zone than the user.
+Now, GPS metadata of the photos are read to determine the time zone they have been photographed in to infer correct time stamps.
+When no GPS information is available, the time stamp curation defaults to a customizable fallback time zone, i.e. the users default.
+The fallback time zone is specified with [TZ/IANA identifiers][timezones-link].
+If not provided, the fallback time zone defaults to Filen's base of operations: 'Europe/Berlin'.
+
+Breaking changes from V1 to V2 are the order of function parameters (with the new parameter `fallbackTimeZone`) and the date-time formatting for directory and file name patterns.
+The formatting changed from `date-and-time` to using `luxon`, with different [date formatting][date-format-link].
+Moving from V1 to V2 requires updating the action inputs `dirPattern` and `filePattern` (if used) and adding a `fallbackTimeZone` if desired and different from the default.
+
+### Example script
 
 For manual usage, here is a minimal example
 
@@ -65,7 +80,7 @@ jobs:
           dryRun: false
 ```
 
-## Environment variables
+### Environment variables
 
 To allow usage without any programming experience, the configuration is outsourced into the GitHub variables and secrets. This has the advantages that no files have to be edited and that the configuration can be maintained from the repository settings. Below are the variables and secrets that have to be set.
 
