@@ -16,8 +16,8 @@ Click the link above to set up the photo organizer for your own filen.io drive w
 ## Features
 
 - Automatic organization of photo files
-- Photos can be sorted into directories based on date taken (default 'YYYY-MM')
-- Photos can be renamed based on date taken (default 'YYYY-MM-DD_HH.mm.ss')
+- Photos can be sorted into directories based on date taken (default 'yyyy-MM')
+- Photos can be renamed based on date taken (default 'yyyy-MM-dd_HH.mm.ss')
 - HEIC/HEIF photos are converted to JPEG while retaining the EXIF metadata
 - File name collision is prevented by incremental suffixes (i.e. 'filename_002.jpg')
 - Identical files are deleted in case they are uploaded again - based on date taken and content
@@ -53,7 +53,7 @@ jobs:
     name: Organize photos
     runs-on: ubuntu-latest
     steps:
-      - uses: szapp/filen-photo-organizer@v1
+      - uses: szapp/filen-photo-organizer@v2
         with:
           email: ${{ secrets.FILEN_EMAIL }}
           password: ${{ secrets.FILEN_PASSWORD }}
@@ -61,6 +61,7 @@ jobs:
           rootPath: ${{ vars.ROOT_PATH }}
           dirPattern: ${{ vars.DIR_PATTERN }}
           filePattern: ${{ vars.FILE_PATTERN }}
+          fallbackTimeZone: ${{ vars.FALLBACK_TIME_ZONE }}
           dryRun: false
 ```
 
@@ -71,19 +72,21 @@ To allow usage without any programming experience, the configuration is outsourc
 > ⚠️ **Warning:** The contents of the secrets are very sensitive. Make sure to not publish them to GitHub or share them with anyone. It's best to only enter them into the designated secrets-setting. If exposed, these values allow arbitrary access to your Filen Drive.  
 > If the Filen SDK offers granular API Tokens for more secure access, this repository will be updated accordingly.
 
-| Secret         | Default               | Description                                                                                              |
-| -------------- | --------------------- | -------------------------------------------------------------------------------------------------------- |
-| FILEN_EMAIL    | _required_            | Filen account email                                                                                      |
-| FILEN_PASSWORD | _required_            | Filen account password                                                                                   |
-| FILEN_TFA      |                       | Filen account two-factor authentication secret, not the generated OTP (if enabled)                       |
-|                |                       |
-| **Variable**   | **Default**           | **Description**                                                                                          |
-|                |                       |                                                                                                          |
-| ROOT_PATH      |                       | Path to the photo directory                                                                              |
-| DIR_PATTERN    | `YYYY-MM`             | Date pattern to sort the photos into (if '', no directories will be created). [Format][date-format-link] |
-| FILE_PATTERN   | `YYYY-MM-DD_HH.mm.ss` | Date pattern for renaming the files based on date-taken (if '', files will not be renamed)               |
+| Secret             | Default               | Description                                                                                                     |
+| ------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------- |
+| FILEN_EMAIL        | _required_            | Filen account email                                                                                             |
+| FILEN_PASSWORD     | _required_            | Filen account password                                                                                          |
+| FILEN_TFA          |                       | Filen account two-factor authentication secret, not the generated OTP (if enabled)                              |
+|                    |                       |
+| **Variable**       | **Default**           | **Description**                                                                                                 |
+|                    |                       |                                                                                                                 |
+| ROOT_PATH          |                       | Path to the photo directory                                                                                     |
+| DIR_PATTERN        | `yyyy-MM`             | Date pattern to sort the photos into (if '', no directories will be created) [Format][date-format-link]         |
+| FILE_PATTERN       | `yyyy-MM-dd_HH.mm.ss` | Date pattern for renaming the files based on date-taken (if '', files will not be renamed)                      |
+| FALLBACK_TIME_ZONE | `Europe/Berlin`       | Fallback time zone when no GPS metadata is found, i.e. where a photo was taken [TZ identifiers][timezones-link] |
 
-[date-format-link]: https://www.npmjs.com/package/date-and-time#formatdateobj-arg-utc
+[date-format-link]: https://moment.github.io/luxon/#/formatting?id=table-of-tokens
+[timezones-link]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 Secrets can be set in the repository settings in the section `Security` in `Secrets and variables` -> `Actions` in the `Secrets` tab under `Repository secrets`. The variables are set in the `Variables` tab under `Repository variables`. Be mindful about the difference between variables and secrets and note the list above.
 
@@ -108,11 +111,12 @@ const main = async () => {
     {
       email: 'filen-user@example.com',
       password: 'filen-password',
-      twoFactorCode: '123456', // Blank if not enabled
+      twoFactorCode: '123456', // Leave blank if not enabled
     },
     '/path/to/photos/',
-    'YYYY-MM', // Directory pattern
-    'YYYY-MM-DD_HH.mm.ss' // File name pattern
+    'yyyy-MM', // Directory pattern
+    'yyyy-MM-dd_HH.mm.ss', // File name pattern
+    'Europe/Berlin' // Fallback time zone as IANA time zone identifier
   )
 }
 

@@ -1,15 +1,19 @@
 import { Mutex } from 'async-mutex'
-import date from 'date-and-time'
 import exifr from 'exifr'
 import FilenSDK, { FSStats, FileMetadata } from '@filen/sdk'
+import { find } from 'geo-tz'
 import convert from 'heic-jpg-exif'
+import { DateTime } from 'luxon'
 import { posix } from 'path'
+import { v5 as uuidv5 } from 'uuid'
+
+const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae'
 
 export default async function processFile(
   filen: FilenSDK,
   filePath: string,
-  dirPattern: string = 'YYYY-MM',
-  filePattern: string = 'YYYY-MM-DD_HH.mm.ss',
+  dirPattern: string = 'yyyy-MM',
+  filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
   writeAccess: Mutex,
   dryRun: boolean = false
 ): Promise<void> {
@@ -24,8 +28,10 @@ export default async function processFile(
     })
     if (!stats.isFile()) return
 
-    let dateTaken: Date
+    const useDateTime: boolean = dirPattern.length > 0 || filePattern.length > 0
+    let dateTaken: DateTime
     let fileContents: Buffer
+    let tz: string = DateTime.now().zoneName
     const { mime } = stats as FileMetadata
 
     // Look for date-created in EXIF metadata
@@ -42,57 +48,93 @@ export default async function processFile(
         path: filePath,
       })
 
-      // Retrieve date-taken from EXIF
-      dateTaken = (await exifr.parse(fileContents, ['DateTimeOriginal']))?.DateTimeOriginal
+      // If no date-time related operations are desired, skip this block in favor of performance
+      if (useDateTime) {
+        // Retrieve time zone based off of GPS data
+        try {
+          const { latitude, longitude } = await exifr.gps(fileContents)
+          const tzCandidates: string[] = find(latitude, longitude)
+          if (tzCandidates.length > 0 && DateTime.now().setZone(tzCandidates[0]).isValid) {
+            tz = tzCandidates[0]
+          }
+        } catch {
+          // Fall back and assume default time zone
+        }
+
+        // Retrieve date-taken from EXIF (as raw string! exifr converts to Date in system time zone - which is incorrect here)
+        const exifDate: string = (await exifr.parse(fileContents, { pick: ['DateTimeOriginal'], reviveValues: false }))?.DateTimeOriginal
+        if (typeof exifDate === 'string') {
+          // Parse string date: Either 'yyyy-MM-dd HH:mm:ss UTC' or 'yyyy:MM:dd HH:mm:ss'
+          // eslint-disable-next-line quotes
+          let exifDateParsed: DateTime = DateTime.fromFormat(exifDate, "yyyy-MM-dd HH:mm:ss 'UTC'", { zone: 'utc' }).setZone(tz)
+          if (!exifDateParsed.isValid) {
+            exifDateParsed = DateTime.fromFormat(exifDate, 'yyyy:MM:dd HH:mm:ss', { zone: tz })
+          }
+          // Fallback to only date and possibly omit time (yet mind UTC)
+          if (!exifDateParsed.isValid) {
+            const [year, month, day, hour, minute, second] = exifDate
+              .trim()
+              .split(/[-: ]/g)
+              .map((ele) => (typeof ele === 'string' ? Number(ele) : undefined))
+            exifDateParsed = DateTime.fromObject(
+              { year, month, day, hour: hour ?? 12, minute, second },
+              { zone: exifDate.search(/utc/i) ? 'utc' : tz }
+            ).setZone(tz)
+          }
+          if (exifDateParsed.isValid) dateTaken = exifDateParsed
+        }
+      }
     }
 
-    // Fall back to date in file name or file creation date or file modification date
-    if (!dateTaken!) {
-      const birthtimeMsDate: Date = new Date(stats.birthtimeMs)
-      const mtimeMsDate: Date = new Date(stats.mtimeMs)
-      const baseName: string = posix.basename(fileName, fileExt)
-      const regex =
-        /(?<!\d)(?<year>(?:19|20)?\d{2})(?:_|-|\.)?(?<month>0[1-9]|1[0-2])(?:_|-|\.)?(?<day>[0-3]\d)(?:_|-|\.)?(?<hour>[0-1][0-9]|2[0-4])?(?:_|-|\.)?(?<min>[0-6]\d)?(?:_|-|\.)?(?<sec>[0-6]\d)?/
-      const match = baseName.match(regex)
-      if (match) {
-        interface ReDateMatch {
-          year: string
-          month: string
-          day: string
-          hour: string | undefined
-          min: string | undefined
-          sec: string | undefined
-        }
-        const res = match.groups as unknown as ReDateMatch
-        const [yy, month, day, hour, min, sec] = Object.values(res).map(Number)
-        let year: number = yy
-        if (year < 100) {
-          const currentYear = Number(String(new Date().getFullYear()).substring(2))
-          year += year > currentYear ? 1900 : 2000
-        }
-        const fileNameDate: Date = new Date(
-          year,
-          month - 1,
-          day,
-          Number.isNaN(hour) ? 12 : hour,
-          Number.isNaN(min) ? 0 : min,
-          Number.isNaN(sec) ? 0 : sec
-        )
+    // Skip if no date-time related operations are desired
+    if (useDateTime) {
+      // Fall back to date in file name or file creation date or file modification date
+      if (!dateTaken!) {
+        const dateCreated: DateTime = DateTime.fromMillis(stats.birthtimeMs, { zone: 'utc' }).setZone(tz)
+        const dateModified: DateTime = DateTime.fromMillis(stats.mtimeMs, { zone: 'utc' }).setZone(tz)
+        const baseName: string = posix.basename(fileName, fileExt)
+        const regex =
+          /(?<!\d)(?<year>(?:19|20)?\d{2})(?:_|-|\.)?(?<month>0[1-9]|1[0-2])(?:_|-|\.)?(?<day>[0-3]\d)(?:_|-|\.)?(?<hour>[0-1][0-9]|2[0-4])?(?:_|-|\.)?(?<min>[0-6]\d)?(?:_|-|\.)?(?<sec>[0-6]\d)?/
+        const match = baseName.match(regex)
+        if (match) {
+          interface ReDateMatch {
+            year: string
+            month: string
+            day: string
+            hour: string | undefined
+            min: string | undefined
+            sec: string | undefined
+          }
+          const res = match.groups as unknown as ReDateMatch
+          const [yy, month, day, hour, minute, second] = Object.values(res).map((ele) =>
+            typeof ele === 'string' ? Number(ele) : undefined
+          )
+          let year: number = Number(yy)
+          if (year < 100) {
+            const currentYear = Number(String(new Date().getFullYear()).substring(2))
+            year += year > currentYear ? 1900 : 2000
+          }
+          // Ensure correct timezone for comparison
+          const fileNameDate: DateTime = DateTime.fromObject({ year, month, day, hour: hour ?? 12, minute, second }, { zone: tz })
 
-        // Cross-check if date matches file times
-        if (date.isSameDay(fileNameDate, birthtimeMsDate)) dateTaken = birthtimeMsDate
-        else if (date.isSameDay(fileNameDate, mtimeMsDate)) dateTaken = mtimeMsDate
-        else dateTaken = fileNameDate
-      } else {
-        // Fall back to file creation or modification date - whichever is older
-        dateTaken = birthtimeMsDate < mtimeMsDate ? birthtimeMsDate : mtimeMsDate
+          // Cross-check if date matches file times
+          const sameDayCreated: boolean = fileNameDate.hasSame(dateCreated, 'day')
+          const sameDayModified: boolean = fileNameDate.hasSame(dateModified, 'day')
+          if (sameDayCreated && sameDayModified) dateTaken = DateTime.min(dateCreated, dateModified)
+          else if (sameDayCreated) dateTaken = dateCreated
+          else if (sameDayModified) dateTaken = dateModified
+          else dateTaken = fileNameDate
+        } else {
+          // Fall back to file creation or modification date - whichever is older
+          dateTaken = DateTime.min(dateCreated, dateModified)
+        }
       }
     }
 
     // Make path names
-    const newDirName: string = dirPattern ? date.format(dateTaken, dirPattern) : ''
+    const newDirName: string = dirPattern ? dateTaken!.toFormat(dirPattern) : ''
     const newDirPath: string = posix.join(rootPath, newDirName)
-    let newBaseName: string = filePattern ? date.format(dateTaken, filePattern) : posix.basename(filePath, fileExt)
+    let newBaseName: string = filePattern ? dateTaken!.toFormat(filePattern) : posix.basename(filePath, fileExt)
 
     // Convert HEIF
     if (mime === 'image/heic' || mime === 'image/heif') {
@@ -171,33 +213,21 @@ export default async function processFile(
           })
         }
       } else {
-        // Three-step process to prevent possible failure in filen-sdk if a file of the same name exists in the destication
-        const tmpFileName: string = `${newBaseName}_${fileName}`
-        const tmpFilePath1: string = posix.join(rootPath, tmpFileName)
-        const tmpFileSubpath2: string = posix.join(newDirName, tmpFileName)
-        const tmpFilePath2: string = posix.join(rootPath, tmpFileSubpath2)
-        console.log(`Move '${fileName}' to '${newFileSubpath}'`)
+        // Two-step process to prevent possible failure in filen-sdk if a file of the same name exists in the destication
+        const tmpFileName: string = uuidv5(`${newBaseName}_${fileName}`, UNIQUE_FILENAME_NAMESPACE) + fileExt // Ensure reasonably short file path
+        const tmpFileSubpath: string = posix.join(newDirName, tmpFileName)
+        const tmpFilePath: string = posix.join(rootPath, tmpFileSubpath)
+        console.log(`Move '${fileName}' to '${newFileSubpath}' (via '${tmpFileSubpath}')`)
         if (!dryRun) {
-          // Rename file within same folder
+          // Rename file in-place and then move it to the destination
           await filen.fs().rename({
             from: filePath,
-            to: tmpFilePath1,
+            to: tmpFilePath,
           })
 
-          // Move renamed file into destination folder
+          // Rename moved file in-place to final file name
           await filen.fs().rename({
-            from: tmpFilePath1,
-            to: tmpFilePath2,
-          })
-
-          // Read directory contents in-between to avoid zero-size files
-          newDirContents = await filen.fs().readdir({
-            path: newDirPath,
-          })
-
-          // Rename renamed file in destination folder to final file name
-          await filen.fs().rename({
-            from: tmpFilePath2,
+            from: tmpFilePath,
             to: newFilePath,
           })
         }

@@ -14,8 +14,9 @@ async function run(): Promise<void> {
   const rootPath: string = core.getInput('rootPath', { required: true })
   const dirPattern: string = core.getInput('dirPattern')
   const filePattern: string = core.getInput('filePattern')
+  const fallbackTimeZone: string = core.getInput('fallbackTimeZone')
   const dryRun: boolean = core.getBooleanInput('dryRun')
-  await organizePhotos(credentials, rootPath, dirPattern, filePattern, dryRun)
+  await organizePhotos(credentials, rootPath, dirPattern, filePattern, fallbackTimeZone, dryRun)
 }
 
 run()

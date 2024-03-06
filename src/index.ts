@@ -1,5 +1,6 @@
 import { Mutex } from 'async-mutex'
 import FilenSDK from '@filen/sdk'
+import { DateTime, Settings } from 'luxon'
 import * as OTPAuth from 'otpauth'
 import { posix } from 'path'
 import processFile from './process.js'
@@ -7,13 +8,18 @@ import processFile from './process.js'
 export default async function organizePhotos(
   credentials: { email: string; password: string; twoFactorCode: string | undefined },
   rootPath: string,
-  dirPattern: string = 'YYYY-MM',
-  filePattern: string = 'YYYY-MM-DD_HH.mm.ss',
+  dirPattern: string = 'yyyy-MM',
+  filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
+  fallbackTimeZone: string = 'Europe/Berlin', // Filen.io location
   dryRun: boolean = false
 ): Promise<void> {
   const filen: FilenSDK = new FilenSDK({
     metadataCache: true,
   })
+
+  // Update time zone
+  Settings.defaultZone = fallbackTimeZone
+  if (DateTime.local().zoneName === null) throw new Error('Error: Invalid time zone. Please specify a valid IANA zone')
 
   try {
     await filen.login({
@@ -32,7 +38,7 @@ export default async function organizePhotos(
 
     // Individually process each file asynchronously
     // Nevertheless, create a mutex for writing operations to avoid file name collisions
-    const writeAccess: Mutex = new Mutex()
+    const writeAccess: Mutex = new Mutex(new Error('Something went wrong with the mutex!'))
     console.log(`Process ${dirContents.length} files in '${rootPath}'`)
     await Promise.allSettled(
       dirContents.map((fileName: string) =>

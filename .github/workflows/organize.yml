@@ -15,7 +15,7 @@ jobs:
     name: Organize photos
     runs-on: ubuntu-latest
     steps:
-      - uses: szapp/filen-photo-organizer@v1
+      - uses: szapp/filen-photo-organizer@v2
         with:
           email: ${{ secrets.FILEN_EMAIL }}
           password: ${{ secrets.FILEN_PASSWORD }}
@@ -23,4 +23,5 @@ jobs:
           rootPath: ${{ vars.ROOT_PATH }}
           dirPattern: ${{ vars.DIR_PATTERN }}
           filePattern: ${{ vars.FILE_PATTERN }}
+          fallbackTimeZone: ${{ vars.FALLBACK_TIME_ZONE }}
           dryRun: false
