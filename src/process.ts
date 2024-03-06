@@ -1,10 +1,15 @@
 import { Mutex } from 'async-mutex'
 import exifr from 'exifr'
 import FilenSDK, { FSStats, FileMetadata } from '@filen/sdk'
+import fs from 'fs'
 import { find } from 'geo-tz'
 import convert from 'heic-jpg-exif'
 import { DateTime } from 'luxon'
+import os from 'os'
 import { posix } from 'path'
+import { v5 as uuidv5 } from 'uuid'
+
+const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae'
 
 export default async function processFile(
   filen: FilenSDK,
@@ -204,10 +209,17 @@ export default async function processFile(
       if (mime === 'image/heic' || mime === 'image/heif') {
         console.log(`Convert '${fileName}' to '${newFileSubpath}'`)
         if (!dryRun) {
-          await filen.fs().writeFile({
-            content: fileContents!,
+          // In order to retain the modification date, write the file locally, upload it, and delete the local file
+          const localTmpDirPath: string = posix.join(filen.config.tmpPath || os.tmpdir(), 'filen-sdk', 'filen-photo-organizer')
+          const localTmpFilePath: string = posix.join(localTmpDirPath, uuidv5(filePath, UNIQUE_FILENAME_NAMESPACE))
+          if (!fs.existsSync(localTmpDirPath)) fs.mkdirSync(localTmpDirPath, { recursive: true })
+          fs.writeFileSync(localTmpFilePath, fileContents!)
+          fs.utimesSync(localTmpFilePath, stats.birthtimeMs / 1000, stats.mtimeMs / 1000)
+          await filen.fs().upload({
             path: newFilePath,
+            source: localTmpFilePath,
           })
+          fs.unlinkSync(localTmpFilePath)
 
           await filen.fs().unlink({
             path: filePath,
@@ -226,8 +238,7 @@ export default async function processFile(
     } finally {
       release()
     }
-  } catch (e) {
-    const error: Error = e as Error
-    console.log(`Error on '${fileName}': ${error?.message || error}`)
+  } catch (error) {
+    console.log(`Error on '${fileName}': ${(error as Error)?.message || error}`)
   }
 }
