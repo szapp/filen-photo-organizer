@@ -38,7 +38,7 @@ export default async function organizePhotos(
 
     // Individually process each file asynchronously
     // Nevertheless, create a mutex for writing operations to avoid file name collisions
-    const writeAccess: Mutex = new Mutex()
+    const writeAccess: Mutex = new Mutex(new Error('Something went wrong with the mutex!'))
     console.log(`Process ${dirContents.length} files in '${rootPath}'`)
     await Promise.allSettled(
       dirContents.map((fileName: string) =>

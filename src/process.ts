@@ -5,6 +5,9 @@ import { find } from 'geo-tz'
 import convert from 'heic-jpg-exif'
 import { DateTime } from 'luxon'
 import { posix } from 'path'
+import { v5 as uuidv5 } from 'uuid'
+
+const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae'
 
 export default async function processFile(
   filen: FilenSDK,
@@ -210,33 +213,21 @@ export default async function processFile(
           })
         }
       } else {
-        // Three-step process to prevent possible failure in filen-sdk if a file of the same name exists in the destication
-        const tmpFileName: string = `${newBaseName}_${fileName}`
-        const tmpFilePath1: string = posix.join(rootPath, tmpFileName)
-        const tmpFileSubpath2: string = posix.join(newDirName, tmpFileName)
-        const tmpFilePath2: string = posix.join(rootPath, tmpFileSubpath2)
-        console.log(`Move '${fileName}' to '${newFileSubpath}'`)
+        // Two-step process to prevent possible failure in filen-sdk if a file of the same name exists in the destication
+        const tmpFileName: string = uuidv5(`${newBaseName}_${fileName}`, UNIQUE_FILENAME_NAMESPACE) + fileExt // Ensure reasonably short file path
+        const tmpFileSubpath: string = posix.join(newDirName, tmpFileName)
+        const tmpFilePath: string = posix.join(rootPath, tmpFileSubpath)
+        console.log(`Move '${fileName}' to '${newFileSubpath}' (via '${tmpFileSubpath}')`)
         if (!dryRun) {
-          // Rename file within same folder
+          // Rename file in-place and then move it to the destination
           await filen.fs().rename({
             from: filePath,
-            to: tmpFilePath1,
+            to: tmpFilePath,
           })
 
-          // Move renamed file into destination folder
+          // Rename moved file in-place to final file name
           await filen.fs().rename({
-            from: tmpFilePath1,
-            to: tmpFilePath2,
-          })
-
-          // Read directory contents in-between to avoid zero-size files
-          newDirContents = await filen.fs().readdir({
-            path: newDirPath,
-          })
-
-          // Rename renamed file in destination folder to final file name
-          await filen.fs().rename({
-            from: tmpFilePath2,
+            from: tmpFilePath,
             to: newFilePath,
           })
         }

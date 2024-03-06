@@ -55,7 +55,7 @@ dryRun = false) {
         dirContents = dirContents.filter((name) => name.indexOf('.') !== -1).sort();
         // Individually process each file asynchronously
         // Nevertheless, create a mutex for writing operations to avoid file name collisions
-        const writeAccess = new async_mutex_1.Mutex();
+        const writeAccess = new async_mutex_1.Mutex(new Error('Something went wrong with the mutex!'));
         console.log(`Process ${dirContents.length} files in '${rootPath}'`);
         await Promise.allSettled(dirContents.map((fileName) => (0, process_js_1.default)(filen, path_1.posix.join(rootPath, fileName), dirPattern, filePattern, writeAccess, dryRun)));
     }
