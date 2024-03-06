@@ -32,7 +32,7 @@ export default async function processFile(
     let dateTaken: DateTime
     let fileContents: Buffer
     let tz: string = DateTime.now().zoneName
-    const { mime } = stats as FileMetadata
+    let { mime } = stats as FileMetadata
 
     // Look for date-created in EXIF metadata
     if (
@@ -138,7 +138,12 @@ export default async function processFile(
 
     // Convert HEIF
     if (mime === 'image/heic' || mime === 'image/heif') {
-      fileContents = (await convert(fileContents!)) as Buffer
+      try {
+        fileContents = (await convert(fileContents!)) as Buffer
+      } catch (e) {
+        if ((e as Error)?.message !== 'Input is already a JPEG image') throw e
+        mime = 'image/jpeg'
+      }
       fileExt = '.jpg'
     }
 

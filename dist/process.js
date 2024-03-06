@@ -26,7 +26,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         let dateTaken;
         let fileContents;
         let tz = luxon_1.DateTime.now().zoneName;
-        const { mime } = stats;
+        let { mime } = stats;
         // Look for date-created in EXIF metadata
         if (mime === 'image/jpeg' ||
             mime === 'image/png' ||
@@ -116,7 +116,14 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         let newBaseName = filePattern ? dateTaken.toFormat(filePattern) : path_1.posix.basename(filePath, fileExt);
         // Convert HEIF
         if (mime === 'image/heic' || mime === 'image/heif') {
-            fileContents = (await (0, heic_jpg_exif_1.default)(fileContents));
+            try {
+                fileContents = (await (0, heic_jpg_exif_1.default)(fileContents));
+            }
+            catch (e) {
+                if ((e === null || e === void 0 ? void 0 : e.message) !== 'Input is already a JPEG image')
+                    throw e;
+                mime = 'image/jpeg';
+            }
             fileExt = '.jpg';
         }
         // Check for existing files with the same name sequentially to avoid file name collisions
