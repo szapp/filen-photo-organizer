@@ -22,10 +22,7 @@ async function run(): Promise<void> {
     result = await organizePhotos(credentials, rootPath, dirPattern, filePattern, fallbackTimeZone, dryRun)
   } catch (error) {
     if (!(error instanceof Error)) error = new Error(String(error))
-    const message: string = (error as Error).message
-    core.setFailed(message)
-    core.summary.addRaw(`Organize photos failed: ${message}`, true)
-    core.summary.write({ overwrite: false })
+    core.setFailed(error as Error)
     return
   }
   const { numFiles, numErrors, errors } = result

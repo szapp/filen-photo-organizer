@@ -122,7 +122,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                 fileContents = (await (0, heic_jpg_exif_1.default)(fileContents));
             }
             catch (e) {
-                if ((e === null || e === void 0 ? void 0 : e.message) !== 'Input is already a JPEG image')
+                if (!(e instanceof Error) || (e === null || e === void 0 ? void 0 : e.message) !== 'Input is already a JPEG image')
                     throw e;
                 mime = 'image/jpeg';
             }

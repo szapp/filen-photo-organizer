@@ -143,7 +143,7 @@ export default async function processFile(
       try {
         fileContents = (await convert(fileContents!)) as Buffer
       } catch (e) {
-        if ((e as Error)?.message !== 'Input is already a JPEG image') throw e
+        if (!(e instanceof Error) || (e as Error)?.message !== 'Input is already a JPEG image') throw e
         mime = 'image/jpeg'
       }
       fileExt = '.jpg'
