@@ -17,7 +17,18 @@ async function run(): Promise<void> {
   const fallbackTimeZone: string = core.getInput('fallbackTimeZone')
   const dryRun: boolean = core.getBooleanInput('dryRun')
 
-  const { numFiles, numErrors, errors } = await organizePhotos(credentials, rootPath, dirPattern, filePattern, fallbackTimeZone, dryRun)
+  let result: { numFiles: number; numErrors: number; errors: string[] }
+  try {
+    result = await organizePhotos(credentials, rootPath, dirPattern, filePattern, fallbackTimeZone, dryRun)
+  } catch (error) {
+    if (!(error instanceof Error)) error = new Error(String(error))
+    const message: string = (error as Error).message
+    core.setFailed(message)
+    core.summary.addRaw(`Organize photos failed: ${message}`, true)
+    core.summary.write({ overwrite: false })
+    return
+  }
+  const { numFiles, numErrors, errors } = result
 
   // Report errors
   errors.map((msg) => core.error(msg))
