@@ -248,7 +248,7 @@ export default async function processFile(
     } else {
       message = String(e)
     }
-    const error: Error = new Error(`Error on '${fileName}': ${message}`)
+    const error: Error = new Error(`Error for '${fileName}': ${message}`)
     console.error(error.message)
     try {
       error.stack = undefined

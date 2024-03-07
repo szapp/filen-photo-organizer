@@ -230,7 +230,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         else {
             message = String(e);
         }
-        const error = new Error(`Error on '${fileName}': ${message}`);
+        const error = new Error(`Error for '${fileName}': ${message}`);
         console.error(error.message);
         try {
             error.stack = undefined;

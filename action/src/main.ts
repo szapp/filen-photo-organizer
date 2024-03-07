@@ -27,8 +27,7 @@ async function run(): Promise<void> {
   }
   const { numFiles, numErrors, errors } = result
 
-  // Report errors
-  errors.map((msg) => core.error(msg))
+  // Report only one general error
   if (numErrors) core.setFailed(`Failed to process ${numErrors} file${numErrors !== 1 ? 's' : ''}`)
 
   // Create job summary
