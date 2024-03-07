@@ -5,6 +5,12 @@ import * as OTPAuth from 'otpauth'
 import { posix } from 'path'
 import processFile from './process.js'
 
+interface Return {
+  numFiles: number
+  numErrors: number
+  errors: string[]
+}
+
 export default async function organizePhotos(
   credentials: { email: string; password: string; twoFactorCode: string | undefined },
   rootPath: string,
@@ -12,7 +18,7 @@ export default async function organizePhotos(
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
   fallbackTimeZone: string = 'Europe/Berlin', // Filen.io location
   dryRun: boolean = false
-): Promise<void> {
+): Promise<Return> {
   const filen: FilenSDK = new FilenSDK({
     metadataCache: true,
   })
@@ -20,6 +26,11 @@ export default async function organizePhotos(
   // Update time zone
   Settings.defaultZone = fallbackTimeZone
   if (DateTime.local().zoneName === null) throw new Error('Error: Invalid time zone. Please specify a valid IANA zone')
+
+  // Report
+  let numFiles: number = 0
+  let numErrors: number = 0
+  let errors: string[] = []
 
   try {
     await filen.login({
@@ -40,17 +51,27 @@ export default async function organizePhotos(
     // Nevertheless, create a mutex for writing operations to avoid file name collisions
     const writeAccess: Mutex = new Mutex(new Error('Something went wrong with the mutex!'))
     console.log(`Process ${dirContents.length} files in '${rootPath}'`)
-    await Promise.allSettled(
+    const processOutputs: PromiseSettledResult<void>[] = await Promise.allSettled(
       dirContents.map((fileName: string) =>
         processFile(filen, posix.join(rootPath, fileName), dirPattern, filePattern, writeAccess, dryRun)
       )
     )
+
+    // Collect rate of success
+    numFiles = dirContents.length
+    errors = processOutputs
+      .filter((p) => p.status === 'rejected')
+      .reduce((out, p) => out.concat((p as PromiseRejectedResult).reason), [])
+      .map((r) => (r as Error)?.message ?? String(r))
+    numErrors = errors.length
   } finally {
     filen.logout()
     filen.clearTemporaryDirectory()
   }
 
-  console.log('Done')
+  console.log(`Done (${numFiles - numErrors}/${numFiles} files succeeded)`)
+
+  return { numFiles, numErrors, errors }
 }
 
 module.exports = organizePhotos

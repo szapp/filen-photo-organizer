@@ -41,6 +41,10 @@ dryRun = false) {
     luxon_1.Settings.defaultZone = fallbackTimeZone;
     if (luxon_1.DateTime.local().zoneName === null)
         throw new Error('Error: Invalid time zone. Please specify a valid IANA zone');
+    // Report
+    let numFiles = 0;
+    let numErrors = 0;
+    let errors = [];
     try {
         await filen.login({
             email: credentials.email,
@@ -57,13 +61,21 @@ dryRun = false) {
         // Nevertheless, create a mutex for writing operations to avoid file name collisions
         const writeAccess = new async_mutex_1.Mutex(new Error('Something went wrong with the mutex!'));
         console.log(`Process ${dirContents.length} files in '${rootPath}'`);
-        await Promise.allSettled(dirContents.map((fileName) => (0, process_js_1.default)(filen, path_1.posix.join(rootPath, fileName), dirPattern, filePattern, writeAccess, dryRun)));
+        const processOutputs = await Promise.allSettled(dirContents.map((fileName) => (0, process_js_1.default)(filen, path_1.posix.join(rootPath, fileName), dirPattern, filePattern, writeAccess, dryRun)));
+        // Collect rate of success
+        numFiles = dirContents.length;
+        errors = processOutputs
+            .filter((p) => p.status === 'rejected')
+            .reduce((out, p) => out.concat(p.reason), [])
+            .map((r) => { var _a; return (_a = r === null || r === void 0 ? void 0 : r.message) !== null && _a !== void 0 ? _a : String(r); });
+        numErrors = errors.length;
     }
     finally {
         filen.logout();
         filen.clearTemporaryDirectory();
     }
-    console.log('Done');
+    console.log(`Done (${numFiles - numErrors}/${numFiles} files succeeded)`);
+    return { numFiles, numErrors, errors };
 }
 exports.default = organizePhotos;
 module.exports = organizePhotos;

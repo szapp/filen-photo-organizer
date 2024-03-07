@@ -143,7 +143,7 @@ export default async function processFile(
       try {
         fileContents = (await convert(fileContents!)) as Buffer
       } catch (e) {
-        if ((e as Error)?.message !== 'Input is already a JPEG image') throw e
+        if (!(e instanceof Error) || (e as Error)?.message !== 'Input is already a JPEG image') throw e
         mime = 'image/jpeg'
       }
       fileExt = '.jpg'
@@ -238,7 +238,23 @@ export default async function processFile(
     } finally {
       release()
     }
-  } catch (error) {
-    console.log(`Error on '${fileName}': ${(error as Error)?.message || error}`)
+  } catch (e) {
+    // Format, print, and throw (reject promise)
+    let message: string
+    if (e instanceof Error) {
+      const err: Error = e as Error
+      message = `${err?.message || e}`
+      if (err?.name !== 'Error') message += ` (${err?.name})`
+    } else {
+      message = String(e)
+    }
+    const error: Error = new Error(`Error for '${fileName}': ${message}`)
+    console.error(error.message)
+    try {
+      error.stack = undefined
+    } catch {
+      // If stack not supported
+    }
+    throw error
   }
 }

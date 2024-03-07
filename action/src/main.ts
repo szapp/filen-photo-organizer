@@ -16,7 +16,28 @@ async function run(): Promise<void> {
   const filePattern: string = core.getInput('filePattern')
   const fallbackTimeZone: string = core.getInput('fallbackTimeZone')
   const dryRun: boolean = core.getBooleanInput('dryRun')
-  await organizePhotos(credentials, rootPath, dirPattern, filePattern, fallbackTimeZone, dryRun)
+
+  let result: { numFiles: number; numErrors: number; errors: string[] }
+  try {
+    result = await organizePhotos(credentials, rootPath, dirPattern, filePattern, fallbackTimeZone, dryRun)
+  } catch (error) {
+    if (!(error instanceof Error)) error = new Error(String(error))
+    core.setFailed(error as Error)
+    return
+  }
+  const { numFiles, numErrors, errors } = result
+
+  // Report only one general error
+  if (numErrors) core.setFailed(`Failed to process ${numErrors} file${numErrors !== 1 ? 's' : ''}`)
+
+  // Create job summary
+  if (!core.summary.isEmptyBuffer()) {
+    core.summary.addSeparator()
+    core.summary.addHeading('Organize photos', '1')
+  }
+  core.summary.addRaw(`Processed ${numFiles} files with ${numErrors} error${numErrors !== 1 ? 's' : ''}`, true)
+  core.summary.addList(errors, false)
+  core.summary.write({ overwrite: false })
 }
 
 run()
