@@ -238,7 +238,23 @@ export default async function processFile(
     } finally {
       release()
     }
-  } catch (error) {
-    console.log(`Error on '${fileName}': ${(error as Error)?.message || error}`)
+  } catch (e) {
+    // Format, print, and throw (reject promise)
+    let message: string
+    if (e instanceof Error) {
+      const err: Error = e as Error
+      message = `${err?.message || e}`
+      if (err?.name !== 'Error') message += ` (${err?.name})`
+    } else {
+      message = String(e)
+    }
+    const error: Error = new Error(`Error on '${fileName}': ${message}`)
+    console.error(error.message)
+    try {
+      error.stack = undefined
+    } catch {
+      // If stack not supported
+    }
+    throw error
   }
 }

@@ -218,8 +218,27 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             release();
         }
     }
-    catch (error) {
-        console.log(`Error on '${fileName}': ${(error === null || error === void 0 ? void 0 : error.message) || error}`);
+    catch (e) {
+        // Format, print, and throw (reject promise)
+        let message;
+        if (e instanceof Error) {
+            const err = e;
+            message = `${(err === null || err === void 0 ? void 0 : err.message) || e}`;
+            if ((err === null || err === void 0 ? void 0 : err.name) !== 'Error')
+                message += ` (${err === null || err === void 0 ? void 0 : err.name})`;
+        }
+        else {
+            message = String(e);
+        }
+        const error = new Error(`Error on '${fileName}': ${message}`);
+        console.error(error.message);
+        try {
+            error.stack = undefined;
+        }
+        catch (_d) {
+            // If stack not supported
+        }
+        throw error;
     }
 }
 exports.default = processFile;
