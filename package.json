@@ -1,6 +1,6 @@
 {
   "name": "filen-photo-organizer",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Organize photos in filen.io drive",
   "main": "dist/index.js",
   "scripts": {
