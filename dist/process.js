@@ -13,7 +13,7 @@ const path_1 = require("path");
 const uuid_1 = require("uuid");
 const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae';
 async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', writeAccess, dryRun = false) {
-    var _a;
+    var _a, _b;
     const fileName = path_1.posix.basename(filePath);
     const rootPath = path_1.posix.dirname(filePath);
     let fileExt = path_1.posix.extname(fileName);
@@ -42,33 +42,41 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             });
             // If no date-time related operations are desired, skip this block in favor of performance
             if (useDateTime) {
-                // Retrieve time zone based off of GPS data
-                try {
-                    const { latitude, longitude } = await exifr_1.default.gps(fileContents);
-                    const tzCandidates = (0, geo_tz_1.find)(latitude, longitude);
-                    if (tzCandidates.length > 0 && luxon_1.DateTime.now().setZone(tzCandidates[0]).isValid) {
-                        tz = tzCandidates[0];
-                    }
+                // Retrieve time zone based off of EXIF data
+                const tzOffset = (_a = (await exifr_1.default.parse(fileContents, { pick: ['OffsetTimeOriginal'], reviveValues: false }))) === null || _a === void 0 ? void 0 : _a.OffsetTimeOriginal;
+                if (typeof tzOffset === 'string' && tzOffset.match(/^[+-]\d{2}:\d{2}$/) && luxon_1.DateTime.now().setZone(`utc${tzOffset}`).isValid) {
+                    tz = `utc${tzOffset}`;
                 }
-                catch (_b) {
-                    // Fall back and assume default time zone
+                else {
+                    // Otherwise retrieve time zone based off of GPS data (EXIF < 2.31 does not support OffsetTimeOriginal)
+                    try {
+                        const { latitude, longitude } = await exifr_1.default.gps(fileContents);
+                        const tzCandidates = (0, geo_tz_1.find)(latitude, longitude);
+                        if (tzCandidates.length > 0 && luxon_1.DateTime.now().setZone(tzCandidates[0]).isValid) {
+                            tz = tzCandidates[0];
+                        }
+                    }
+                    catch (_c) {
+                        // Fall back and assume default time zone
+                    }
                 }
                 // Retrieve date-taken from EXIF (as raw string! exifr converts to Date in system time zone - which is incorrect here)
-                const exifDate = (_a = (await exifr_1.default.parse(fileContents, { pick: ['DateTimeOriginal'], reviveValues: false }))) === null || _a === void 0 ? void 0 : _a.DateTimeOriginal;
+                const exifDate = (_b = (await exifr_1.default.parse(fileContents, { pick: ['DateTimeOriginal'], reviveValues: false }))) === null || _b === void 0 ? void 0 : _b.DateTimeOriginal;
                 if (typeof exifDate === 'string') {
-                    // Parse string date: Either 'yyyy-MM-dd HH:mm:ss UTC' or 'yyyy:MM:dd HH:mm:ss'
-                    // eslint-disable-next-line quotes
-                    let exifDateParsed = luxon_1.DateTime.fromFormat(exifDate, "yyyy-MM-dd HH:mm:ss 'UTC'", { zone: 'utc' }).setZone(tz);
+                    // Parse string date according to EXIF specifications 'yyyy:MM:dd HH:mm:ss'. Just in case also test for 'yyyy-MM-dd HH:mm:ss'
+                    let exifDateParsed = luxon_1.DateTime.fromFormat(exifDate, 'yyyy:MM:dd HH:mm:ss', { zone: tz });
                     if (!exifDateParsed.isValid) {
-                        exifDateParsed = luxon_1.DateTime.fromFormat(exifDate, 'yyyy:MM:dd HH:mm:ss', { zone: tz });
+                        exifDateParsed = luxon_1.DateTime.fromFormat(exifDate, 'yyyy-MM-dd HH:mm:ss', { zone: tz });
                     }
-                    // Fallback to only date and possibly omit time (yet mind UTC)
+                    // Fallback to only date and possibly omit time (unlikely)
                     if (!exifDateParsed.isValid) {
                         const [year, month, day, hour, minute, second] = exifDate
                             .trim()
                             .split(/[-: ]/g)
                             .map((ele) => (typeof ele === 'string' ? Number(ele) : undefined));
-                        exifDateParsed = luxon_1.DateTime.fromObject({ year, month, day, hour: hour !== null && hour !== void 0 ? hour : 12, minute, second }, { zone: exifDate.search(/utc/i) ? 'utc' : tz }).setZone(tz);
+                        if (typeof year !== 'undefined' && month && day) {
+                            exifDateParsed = luxon_1.DateTime.fromObject({ year, month, day, hour: hour !== null && hour !== void 0 ? hour : 12, minute, second }, { zone: tz });
+                        }
                     }
                     if (exifDateParsed.isValid)
                         dateTaken = exifDateParsed;
@@ -138,7 +146,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                     path: newDirPath,
                 });
             }
-            catch (_c) {
+            catch (_d) {
                 newDirContents = [];
             }
             const fileNamePattern = new RegExp(`^${newBaseName}(?:_(?<index>\\d{3}))?${fileExt}$`);
@@ -235,7 +243,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         try {
             error.stack = undefined;
         }
-        catch (_d) {
+        catch (_e) {
             // If stack not supported
         }
         throw error;
