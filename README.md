@@ -11,7 +11,8 @@ Available for NodeJS and as GitHub Action for immediate usability via scheduled 
 
 [![Use me](https://img.shields.io/badge/template-use%20me-green?style=for-the-badge&logo=github)](https://repo.new/?template_name=filen-photo-organizer-template&template_owner=szapp&name=filen-photo-organizer&description=Automatically%20organizes%20my%20filen.io%20photos)
 
-Click the link above to set up the photo organizer for your own filen.io drive with minimal effort.
+Click the link above to set up the photo organizer for your own Filen drive with minimal effort.  
+After clicking, follow the instructions in the README of the created repository.
 
 ## Features
 
@@ -30,7 +31,7 @@ To make the organization useful, periodic maintenance is essential, e.g. via a p
 While other hosted services limit the frequency of cron jobs in their free plans, GitHub Actions offer generous quota on scheduling.
 This repository contains a GitHub Action that can be used without any coding knowledge, as all configuration is outsourced into GitHub variables and secrets.
 
-The setup is explained in an easy to clone template repository: https://github.com/szapp/filen-photo-organizer-template or click the button above
+The setup is explained in an easy to clone template repository at https://github.com/szapp/filen-photo-organizer-template. Click the link or the button above and follow the instructions there.
 
 ### V2
 
@@ -54,11 +55,15 @@ For manual usage, here is a minimal example
 name: Organize photos
 # For an easy to use template visit https://github.com/szapp/filen-photo-organizer-template
 
-# Run very ten minutes between 5:00 and 22:00 UTC or by manual dispatch
+# Run very two hours between 5:00 and 22:00 UTC or by manual dispatch
+# The most frequent a scheduled GitHub workflow can run is every 5 minutes
+# However, with the monthly 2.000 computing minutes quota for free GitHub accounts
+# and an estimated average run time of this workflow of 5 minutes at generous photographing,
+# a schedule of every second hour during day time or less is highly recommended
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/10 5-22 * * *'
+    - cron: '43 5-22/2 * * *'
 
 # If the job takes longer, queue the next execution to prevent overlapping, conflicting runs
 concurrency:
