@@ -1,5 +1,7 @@
 /node_modules/
-/.github/
-/.vscode/
+/.*
 /action/
 /action.yml
+/src/
+/tsconfig.json
+/dev/

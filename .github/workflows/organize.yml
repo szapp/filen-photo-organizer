@@ -1,11 +1,15 @@
 name: Organize photos
 # For an easy to use template visit https://github.com/szapp/filen-photo-organizer-template
 
-# Run very ten minutes between 5:00 and 22:00 UTC or by manual dispatch
+# Run very two hours between 5:00 and 22:00 UTC or by manual dispatch
+# The most frequent a scheduled GitHub workflow can run is every 5 minutes
+# However, with the monthly 2.000 computing minutes quota for free GitHub accounts
+# and an estimated average run time of this workflow of 5 minutes at generous photographing,
+# a schedule of every second hour during day time or less is highly recommended
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/10 5-22 * * *'
+    - cron: '43 5-22/2 * * *'
 
 # If the job takes longer, queue the next execution to prevent overlapping, conflicting runs
 concurrency:

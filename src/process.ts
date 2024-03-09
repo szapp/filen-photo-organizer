@@ -52,36 +52,41 @@ export default async function processFile(
 
       // If no date-time related operations are desired, skip this block in favor of performance
       if (useDateTime) {
-        // Retrieve time zone based off of GPS data
-        try {
-          const { latitude, longitude } = await exifr.gps(fileContents)
-          const tzCandidates: string[] = find(latitude, longitude)
-          if (tzCandidates.length > 0 && DateTime.now().setZone(tzCandidates[0]).isValid) {
-            tz = tzCandidates[0]
+        // Retrieve time zone based off of EXIF data
+        const tzOffset: string = (await exifr.parse(fileContents, { pick: ['OffsetTimeOriginal'], reviveValues: false }))
+          ?.OffsetTimeOriginal
+        if (typeof tzOffset === 'string' && tzOffset.match(/^[+-]\d{2}:\d{2}$/) && DateTime.now().setZone(`utc${tzOffset}`).isValid) {
+          tz = `utc${tzOffset}`
+        } else {
+          // Otherwise retrieve time zone based off of GPS data (EXIF < 2.31 does not support OffsetTimeOriginal)
+          try {
+            const { latitude, longitude } = await exifr.gps(fileContents)
+            const tzCandidates: string[] = find(latitude, longitude)
+            if (tzCandidates.length > 0 && DateTime.now().setZone(tzCandidates[0]).isValid) {
+              tz = tzCandidates[0]
+            }
+          } catch {
+            // Fall back and assume default time zone
           }
-        } catch {
-          // Fall back and assume default time zone
         }
 
         // Retrieve date-taken from EXIF (as raw string! exifr converts to Date in system time zone - which is incorrect here)
         const exifDate: string = (await exifr.parse(fileContents, { pick: ['DateTimeOriginal'], reviveValues: false }))?.DateTimeOriginal
         if (typeof exifDate === 'string') {
-          // Parse string date: Either 'yyyy-MM-dd HH:mm:ss UTC' or 'yyyy:MM:dd HH:mm:ss'
-          // eslint-disable-next-line quotes
-          let exifDateParsed: DateTime = DateTime.fromFormat(exifDate, "yyyy-MM-dd HH:mm:ss 'UTC'", { zone: 'utc' }).setZone(tz)
+          // Parse string date according to EXIF specifications 'yyyy:MM:dd HH:mm:ss'. Just in case also test for 'yyyy-MM-dd HH:mm:ss'
+          let exifDateParsed: DateTime = DateTime.fromFormat(exifDate, 'yyyy:MM:dd HH:mm:ss', { zone: tz })
           if (!exifDateParsed.isValid) {
-            exifDateParsed = DateTime.fromFormat(exifDate, 'yyyy:MM:dd HH:mm:ss', { zone: tz })
+            exifDateParsed = DateTime.fromFormat(exifDate, 'yyyy-MM-dd HH:mm:ss', { zone: tz })
           }
-          // Fallback to only date and possibly omit time (yet mind UTC)
+          // Fallback to only date and possibly omit time (unlikely)
           if (!exifDateParsed.isValid) {
             const [year, month, day, hour, minute, second] = exifDate
               .trim()
               .split(/[-: ]/g)
               .map((ele) => (typeof ele === 'string' ? Number(ele) : undefined))
-            exifDateParsed = DateTime.fromObject(
-              { year, month, day, hour: hour ?? 12, minute, second },
-              { zone: exifDate.search(/utc/i) ? 'utc' : tz }
-            ).setZone(tz)
+            if (typeof year !== 'undefined' && month && day) {
+              exifDateParsed = DateTime.fromObject({ year, month, day, hour: hour ?? 12, minute, second }, { zone: tz })
+            }
           }
           if (exifDateParsed.isValid) dateTaken = exifDateParsed
         }

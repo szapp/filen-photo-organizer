@@ -1,6 +1,6 @@
 {
   "name": "filen-photo-organizer",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Organize photos in filen.io drive",
   "main": "dist/index.js",
   "scripts": {
@@ -37,11 +37,11 @@
     "typescript": "^5.4.2"
   },
   "dependencies": {
-    "@filen/sdk": "^0.1.27",
+    "@filen/sdk": "^0.1.28",
     "async-mutex": "^0.4.1",
     "exifr": "^7.1.3",
     "geo-tz": "^8.0.1",
-    "heic-jpg-exif": "^0.3.0",
+    "heic-jpg-exif": "^0.3.1",
     "luxon": "^3.4.4",
     "otpauth": "^9.2.2",
     "uuid": "^9.0.1"
