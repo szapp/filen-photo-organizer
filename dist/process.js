@@ -4,31 +4,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const exifr_1 = __importDefault(require("exifr"));
+const mime_1 = __importDefault(require("mime"));
 const fs_1 = __importDefault(require("fs"));
 const geo_tz_1 = require("geo-tz");
 const heic_jpg_exif_1 = __importDefault(require("heic-jpg-exif"));
 const luxon_1 = require("luxon");
-const os_1 = __importDefault(require("os"));
 const path_1 = require("path");
-const uuid_1 = require("uuid");
-const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae';
-async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', writeAccess, dryRun = false) {
+async function processFile(filePath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', writeAccess, dryRun = false) {
     var _a, _b;
     const fileName = path_1.posix.basename(filePath);
     const rootPath = path_1.posix.dirname(filePath);
     let fileExt = path_1.posix.extname(fileName);
     try {
         // Only operate on files
-        const stats = await filen.fs().stat({
-            path: filePath,
-        });
+        const stats = fs_1.default.statSync(filePath);
         if (!stats.isFile())
             return;
         const useDateTime = dirPattern.length > 0 || filePattern.length > 0;
         let dateTaken;
         let fileContents;
         let tz = luxon_1.DateTime.now().zoneName;
-        let { mime } = stats;
+        let mime = mime_1.default.getType(filePath);
         // Look for date-created in EXIF metadata
         if (mime === 'image/jpeg' ||
             mime === 'image/png' ||
@@ -37,9 +33,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             mime === 'image/avif' ||
             mime === 'image/tiff') {
             // Read the file
-            fileContents = await filen.fs().readFile({
-                path: filePath,
-            });
+            fileContents = fs_1.default.readFileSync(filePath);
             // If no date-time related operations are desired, skip this block in favor of performance
             if (useDateTime) {
                 // Retrieve time zone based off of EXIF data
@@ -142,9 +136,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             // Check destination directory for files with matching file name
             let newDirContents;
             try {
-                newDirContents = await filen.fs().readdir({
-                    path: newDirPath,
-                });
+                newDirContents = fs_1.default.readdirSync(newDirPath);
             }
             catch (_d) {
                 newDirContents = [];
@@ -155,25 +147,18 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             if (newDirContents.length > 0) {
                 // Load the current file into memory for comparison
                 if (!fileContents) {
-                    fileContents = await filen.fs().readFile({
-                        path: filePath,
-                    });
+                    fileContents = fs_1.default.readFileSync(filePath);
                 }
                 // Check if the file is identical to any of the existing files
                 let duplicate = false;
                 for (let idx = 0; idx < newDirContents.length; idx++) {
                     const checkFileName = newDirContents[idx];
-                    const checkFileContents = await filen.fs().readFile({
-                        path: path_1.posix.join(newDirPath, checkFileName),
-                    });
+                    const checkFileContents = fs_1.default.readFileSync(path_1.posix.join(newDirPath, checkFileName));
                     // Files are identical: Abort and delete one
                     if (!fileContents.compare(checkFileContents)) {
                         console.log(`Delete '${fileName}', because it already exists as '${path_1.posix.join(newDirName, checkFileName)}'`);
                         if (!dryRun) {
-                            await filen.fs().unlink({
-                                path: filePath,
-                                permanent: true,
-                            });
+                            fs_1.default.unlinkSync(filePath);
                         }
                         duplicate = true;
                         break;
@@ -194,31 +179,19 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             if (mime === 'image/heic' || mime === 'image/heif') {
                 console.log(`Convert '${fileName}' to '${newFileSubpath}'`);
                 if (!dryRun) {
-                    // In order to retain the modification date, write the file locally, upload it, and delete the local file
-                    const localTmpDirPath = path_1.posix.join(filen.config.tmpPath || os_1.default.tmpdir(), 'filen-sdk', 'filen-photo-organizer');
-                    const localTmpFilePath = path_1.posix.join(localTmpDirPath, (0, uuid_1.v5)(filePath, UNIQUE_FILENAME_NAMESPACE));
-                    if (!fs_1.default.existsSync(localTmpDirPath))
-                        fs_1.default.mkdirSync(localTmpDirPath, { recursive: true });
-                    fs_1.default.writeFileSync(localTmpFilePath, fileContents);
-                    fs_1.default.utimesSync(localTmpFilePath, stats.birthtimeMs / 1000, stats.mtimeMs / 1000);
-                    await filen.fs().upload({
-                        path: newFilePath,
-                        source: localTmpFilePath,
-                    });
-                    fs_1.default.unlinkSync(localTmpFilePath);
-                    await filen.fs().unlink({
-                        path: filePath,
-                        permanent: false,
-                    });
+                    if (!fs_1.default.existsSync(newDirPath))
+                        fs_1.default.mkdirSync(newDirPath, { recursive: true });
+                    fs_1.default.writeFileSync(newFilePath, fileContents);
+                    fs_1.default.utimesSync(newFilePath, stats.birthtimeMs / 1000, stats.mtimeMs / 1000);
+                    fs_1.default.unlinkSync(filePath);
                 }
             }
             else {
                 console.log(`Move '${fileName}' to '${newFileSubpath}'`);
                 if (!dryRun) {
-                    await filen.fs().rename({
-                        from: filePath,
-                        to: newFilePath,
-                    });
+                    if (!fs_1.default.existsSync(newDirPath))
+                        fs_1.default.mkdirSync(newDirPath, { recursive: true });
+                    fs_1.default.renameSync(filePath, newFilePath);
                 }
             }
         }

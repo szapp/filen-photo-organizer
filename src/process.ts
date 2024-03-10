@@ -1,18 +1,13 @@
 import { Mutex } from 'async-mutex'
 import exifr from 'exifr'
-import FilenSDK, { FSStats, FileMetadata } from '@filen/sdk'
+import mimeType from 'mime'
 import fs from 'fs'
 import { find } from 'geo-tz'
 import convert from 'heic-jpg-exif'
 import { DateTime } from 'luxon'
-import os from 'os'
 import { posix } from 'path'
-import { v5 as uuidv5 } from 'uuid'
-
-const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae'
 
 export default async function processFile(
-  filen: FilenSDK,
   filePath: string,
   dirPattern: string = 'yyyy-MM',
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
@@ -25,16 +20,14 @@ export default async function processFile(
 
   try {
     // Only operate on files
-    const stats: FSStats = await filen.fs().stat({
-      path: filePath,
-    })
+    const stats: fs.Stats = fs.statSync(filePath)
     if (!stats.isFile()) return
 
     const useDateTime: boolean = dirPattern.length > 0 || filePattern.length > 0
     let dateTaken: DateTime
     let fileContents: Buffer
     let tz: string = DateTime.now().zoneName
-    let { mime } = stats as FileMetadata
+    let mime = mimeType.getType(filePath)
 
     // Look for date-created in EXIF metadata
     if (
@@ -46,9 +39,7 @@ export default async function processFile(
       mime === 'image/tiff'
     ) {
       // Read the file
-      fileContents = await filen.fs().readFile({
-        path: filePath,
-      })
+      fileContents = fs.readFileSync(filePath)
 
       // If no date-time related operations are desired, skip this block in favor of performance
       if (useDateTime) {
@@ -160,9 +151,7 @@ export default async function processFile(
       // Check destination directory for files with matching file name
       let newDirContents: string[]
       try {
-        newDirContents = await filen.fs().readdir({
-          path: newDirPath,
-        })
+        newDirContents = fs.readdirSync(newDirPath)
       } catch {
         newDirContents = []
       }
@@ -173,26 +162,19 @@ export default async function processFile(
       if (newDirContents.length > 0) {
         // Load the current file into memory for comparison
         if (!fileContents!) {
-          fileContents = await filen.fs().readFile({
-            path: filePath,
-          })
+          fileContents = fs.readFileSync(filePath)
         }
 
         // Check if the file is identical to any of the existing files
         let duplicate: boolean = false
         for (let idx = 0; idx < newDirContents.length; idx++) {
           const checkFileName = newDirContents[idx]
-          const checkFileContents: Buffer = await filen.fs().readFile({
-            path: posix.join(newDirPath, checkFileName),
-          })
+          const checkFileContents: Buffer = fs.readFileSync(posix.join(newDirPath, checkFileName))
           // Files are identical: Abort and delete one
           if (!fileContents.compare(checkFileContents)) {
             console.log(`Delete '${fileName}', because it already exists as '${posix.join(newDirName, checkFileName)}'`)
             if (!dryRun) {
-              await filen.fs().unlink({
-                path: filePath,
-                permanent: true,
-              })
+              fs.unlinkSync(filePath)
             }
             duplicate = true
             break
@@ -214,30 +196,16 @@ export default async function processFile(
       if (mime === 'image/heic' || mime === 'image/heif') {
         console.log(`Convert '${fileName}' to '${newFileSubpath}'`)
         if (!dryRun) {
-          // In order to retain the modification date, write the file locally, upload it, and delete the local file
-          const localTmpDirPath: string = posix.join(filen.config.tmpPath || os.tmpdir(), 'filen-sdk', 'filen-photo-organizer')
-          const localTmpFilePath: string = posix.join(localTmpDirPath, uuidv5(filePath, UNIQUE_FILENAME_NAMESPACE))
-          if (!fs.existsSync(localTmpDirPath)) fs.mkdirSync(localTmpDirPath, { recursive: true })
-          fs.writeFileSync(localTmpFilePath, fileContents!)
-          fs.utimesSync(localTmpFilePath, stats.birthtimeMs / 1000, stats.mtimeMs / 1000)
-          await filen.fs().upload({
-            path: newFilePath,
-            source: localTmpFilePath,
-          })
-          fs.unlinkSync(localTmpFilePath)
-
-          await filen.fs().unlink({
-            path: filePath,
-            permanent: false,
-          })
+          if (!fs.existsSync(newDirPath)) fs.mkdirSync(newDirPath, { recursive: true })
+          fs.writeFileSync(newFilePath, fileContents!)
+          fs.utimesSync(newFilePath, stats.birthtimeMs / 1000, stats.mtimeMs / 1000)
+          fs.unlinkSync(filePath)
         }
       } else {
         console.log(`Move '${fileName}' to '${newFileSubpath}'`)
         if (!dryRun) {
-          await filen.fs().rename({
-            from: filePath,
-            to: newFilePath,
-          })
+          if (!fs.existsSync(newDirPath)) fs.mkdirSync(newDirPath, { recursive: true })
+          fs.renameSync(filePath, newFilePath)
         }
       }
     } finally {

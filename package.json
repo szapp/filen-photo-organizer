@@ -26,6 +26,7 @@
   "homepage": "https://github.com/szapp/filen-photo-organizer#readme",
   "devDependencies": {
     "@types/luxon": "^3.4.2",
+    "@types/mime": "^3.0.4",
     "@types/node": "^20.11.25",
     "@types/uuid": "^9.0.8",
     "@typescript-eslint/eslint-plugin": "^7.1.0",
@@ -43,6 +44,7 @@
     "geo-tz": "^8.0.1",
     "heic-jpg-exif": "^0.3.1",
     "luxon": "^3.4.4",
+    "mime": "^3.0.0",
     "otpauth": "^9.2.2",
     "uuid": "^9.0.1"
   }
