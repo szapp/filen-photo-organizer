@@ -172,7 +172,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                         if (!dryRun) {
                             await filen.fs().unlink({
                                 path: filePath,
-                                permanent: true,
+                                permanent: false,
                             });
                         }
                         duplicate = true;

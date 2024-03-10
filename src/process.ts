@@ -191,7 +191,7 @@ export default async function processFile(
             if (!dryRun) {
               await filen.fs().unlink({
                 path: filePath,
-                permanent: true,
+                permanent: false,
               })
             }
             duplicate = true
