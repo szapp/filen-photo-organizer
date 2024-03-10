@@ -35,7 +35,7 @@ async function run(): Promise<void> {
     core.summary.addSeparator()
     core.summary.addHeading('Organize photos', '1')
   }
-  core.summary.addRaw(`Processed ${numFiles} files with ${numErrors} error${numErrors !== 1 ? 's' : ''}`, true)
+  core.summary.addRaw(`Processed ${numFiles} file${numFiles !== 1 ? 's' : ''} with ${numErrors} error${numErrors !== 1 ? 's' : ''}`, true)
   core.summary.addList(errors, false)
   core.summary.write({ overwrite: false })
 }
