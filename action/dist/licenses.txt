@@ -2341,12 +2341,10 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-piexif-ts-0232
+piexif-ts
 MIT
 The MIT License (MIT)
 
-Copyright (c) 2024 Sören Zapp
-Copyright (c) 2019 Joachim Holwech
 Copyright (c) 2014 Hiroaki Matoba
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

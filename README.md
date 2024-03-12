@@ -17,8 +17,8 @@ After clicking, follow the instructions in the README of the created repository.
 ## Features
 
 - Automatic organization of photo files
-- Photos can be sorted into directories based on date taken (default 'yyyy-MM')
-- Photos can be renamed based on date taken (default 'yyyy-MM-dd_HH.mm.ss')
+- Photos can be sorted into directories based on date taken (default folder name 'yyyy-MM')
+- Photos can be renamed based on date taken (default file name 'yyyy-MM-dd_HH.mm.ss')
 - Date and time operations consider the time zone the photo was taken in (based on GPS metadata if available)
 - HEIC/HEIF photos are converted to JPEG while retaining the EXIF metadata
 - File name collision is prevented by incremental suffixes (i.e. 'filename_002.jpg')
@@ -32,6 +32,11 @@ While other hosted services limit the frequency of cron jobs in their free plans
 This repository contains a GitHub Action that can be used without any coding knowledge, as all configuration is outsourced into GitHub variables and secrets.
 
 The setup is explained in an easy to clone template repository at https://github.com/szapp/filen-photo-organizer-template. Click the link or the button above and follow the instructions there.
+
+### V3
+
+Differentiate between two factor code and two factor secret.
+Moving from V2 to V3 requires updating the action inputs `twoFactorCode` and `twoFactorSecret` (if used).
 
 ### V2
 
@@ -49,77 +54,77 @@ Moving from V1 to V2 requires updating the action inputs `dirPattern` and `fileP
 
 ### Example script
 
-For manual usage, here is a minimal example
+For manual usage of the GitHub Action in a workflow, here is a minimal example with explanations
 
 ```yml
-name: Organize photos
-# For an easy to use template visit https://github.com/szapp/filen-photo-organizer-template
+- uses: szapp/filen-photo-organizer@v3
+  with:
+    # User login email of filen.io account
+    # Required
+    email: ''
 
-# Run very two hours between 5:00 and 22:00 UTC or by manual dispatch
-# The most frequent a scheduled GitHub workflow can run is every 5 minutes
-# However, with the monthly 2.000 computing minutes quota for free GitHub accounts
-# and an estimated average run time of this workflow of 5 minutes at generous photographing,
-# a schedule of every second hour during day time or less is highly recommended
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: '43 5-22/2 * * *'
+    # User login passwort of filen.io account
+    # Required
+    password: ''
 
-# If the job takes longer, queue the next execution to prevent overlapping, conflicting runs
-concurrency:
-  group: ${{ github.workflow }}
+    # Two factor code, i.e. generated OTP (if enabled).
+    # If 2FA is enabled, either twoFactorSecret or twoFactorCode must be provided. If both are provided, twoFactorCode takes precedence.
+    # Optional
+    twoFactorCode: ''
 
-# The configuration is completely outsourced into GitHub Action variables and secrets
-# This allows to update the settings without altering the scripts or pushing changes to the repository
-# Never expose any sensitive information directly, and always use GitHub secrets where necessary
-jobs:
-  organize:
-    name: Organize photos
-    runs-on: ubuntu-latest
-    steps:
-      - uses: szapp/filen-photo-organizer@v2
-        with:
-          email: ${{ secrets.FILEN_EMAIL }}
-          password: ${{ secrets.FILEN_PASSWORD }}
-          twoFactorCode: ${{ secrets.FILEN_TFA }}
-          rootPath: ${{ vars.ROOT_PATH }}
-          dirPattern: ${{ vars.DIR_PATTERN }}
-          filePattern: ${{ vars.FILE_PATTERN }}
-          fallbackTimeZone: ${{ vars.FALLBACK_TIME_ZONE }}
-          dryRun: false
+    # Two factor secret (if enabled).
+    # If 2FA is enabled, either twoFactorSecret or twoFactorCode must be provided. If both are provided, twoFactorCode takes precedence.
+    # Optional
+    twoFactorSecret: ''
+
+    # Path to the photo directory
+    # Required
+    rootPath: ''
+
+    # Date-time pattern of directories to sort the photos into (if '', no directories will be created)
+    # The pattern is based on the date taken
+    # Format: https://moment.github.io/luxon/docs/manual/formatting.html#table-of-tokens
+    #
+    # Default: 'yyyy-MM'
+    dirPattern: 'yyyy-MM'
+
+    # Date-time pattern for renaming the files based on date taken (if '', preserve original file name)
+    # The pattern is based on the date taken.
+    # Format: https://moment.github.io/luxon/docs/manual/formatting.html#table-of-tokens
+    #
+    # Default: 'yyyy-MM-dd_HH.mm.ss'
+    filePattern: 'yyyy-MM-dd_HH.mm.ss'
+
+    # Time zone to assume for photo organization when no time zone offset and GPS metadata is available, i.e. the time zone in which the photos were taken.
+    # As TZ / IANA identifier (e.g. 'Europe/Berlin')
+    # Identifiers: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+    #
+    # Default: 'Europe/Berlin'
+    fallbackTimeZone: 'Europe/Berlin'
+
+    # Do not perform write operations on the filen.io
+    #
+    # Default: false
+    dryRun: false
 ```
 
-### Environment variables
+Find a full workflow example [here](https://github.com/szapp/filen-photo-organizer/blob/main/.github/workflows/organize.yml).
+For easy usage, refer to the template repository: [szapp/filen-photo-organizer-template](https://github.com/szapp/filen-photo-organizer-template)
 
-To allow usage without any programming experience, the configuration is outsourced into the GitHub variables and secrets. This has the advantages that no files have to be edited and that the configuration can be maintained from the repository settings. Below are the variables and secrets that have to be set.
+> ⚠️ **Warning:** The login information (`email`, `password`, `twoFactorCode`, and `twoFactorSecret`) are sensitive information.
+> Make sure to never publish them to GitHub or share them with anyone.
+> Specify them using GitHub secrets only.
+> If exposed, these values allow arbitrary access to your Filen drive.  
+> If the Filen SDK implements granular API Tokens for more secure access in the future, this repository will be updated accordingly.
 
-> ⚠️ **Warning:** The contents of the secrets are very sensitive. Make sure to not publish them to GitHub or share them with anyone. It's best to only enter them into the designated secrets-setting. If exposed, these values allow arbitrary access to your Filen Drive.  
-> If the Filen SDK offers granular API Tokens for more secure access, this repository will be updated accordingly.
-
-| Secret             | Default               | Description                                                                                                     |
-| ------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------- |
-| FILEN_EMAIL        | _required_            | Filen account email                                                                                             |
-| FILEN_PASSWORD     | _required_            | Filen account password                                                                                          |
-| FILEN_TFA          |                       | Filen account two-factor authentication secret, not the generated OTP (if enabled)                              |
-|                    |                       |
-| **Variable**       | **Default**           | **Description**                                                                                                 |
-|                    |                       |                                                                                                                 |
-| ROOT_PATH          |                       | Path to the photo directory                                                                                     |
-| DIR_PATTERN        | `yyyy-MM`             | Date pattern to sort the photos into (if '', no directories will be created) [Format][date-format-link]         |
-| FILE_PATTERN       | `yyyy-MM-dd_HH.mm.ss` | Date pattern for renaming the files based on date-taken (if '', files will not be renamed)                      |
-| FALLBACK_TIME_ZONE | `Europe/Berlin`       | Fallback time zone when no GPS metadata is found, i.e. where a photo was taken [TZ identifiers][timezones-link] |
-
-[date-format-link]: https://moment.github.io/luxon/#/formatting?id=table-of-tokens
-[timezones-link]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-
-Secrets can be set in the repository settings in the section `Security` in `Secrets and variables` -> `Actions` in the `Secrets` tab under `Repository secrets`. The variables are set in the `Variables` tab under `Repository variables`. Be mindful about the difference between variables and secrets and note the list above.
+Secrets can be set in the repository settings in the section `Security` in `Secrets and variables` -> `Actions` in the `Secrets` tab under `Repository secrets`.
 
 ## Run manually in NodeJS
 
-Install locally
+Install
 
-```bash
-npm install github:szapp/filen-photo-organizer
+```
+npm install szapp/filen-photo-organizer
 ```
 
 Import
@@ -129,25 +134,46 @@ Import
 const organizePhotos = require('filen-photo-organizer')
 // TypeScript
 import organizePhotos from 'filen-photo-organizer'
-
-const main = async () => {
-  await organizePhotos(
-    {
-      email: 'filen-user@example.com',
-      password: 'filen-password',
-      twoFactorCode: '123456', // Leave blank if not enabled
-    },
-    '/path/to/photos/',
-    'yyyy-MM', // Directory pattern
-    'yyyy-MM-dd_HH.mm.ss', // File name pattern
-    'Europe/Berlin' // Fallback time zone as IANA time zone identifier
-  )
-}
-
-main()
 ```
+
+Use
+
+```typescript
+await organizePhotos(
+  {
+    email: 'filen-user@example.com',
+    password: 'filen-password',
+    twoFactorCode: '123456', // Omit if not enabled
+    twoFactorSecret: 'JFSU4NNSFGFLOPL2', // Omit if not enabled or providing 'twoFactorCode'
+  },
+  '/path/to/photos/',
+  'yyyy-MM', // Directory pattern
+  'yyyy-MM-dd_HH.mm.ss', // File name pattern
+  'Europe/Berlin' // Fallback time zone as IANA time zone identifier
+)
+```
+
+### Offline use
+
+This package can also be used offline using `node:fs` on the local file system without cloud operations.
+Use to the git branch `fs-offline`.
+Mind the different function signature of `organizePhotos` in the source code.
+
+```
+npm install szapp/filen-photo-organizer#fs-offline
+```
+
+## Finaly notes
+
+- For videos only the file modification time and file name are considered for time-based operations.
+  Reading the metadata of a file requires to load the entire file into memory, due to the encryption.
+  While that has reasonably overhead for images, this step is omitted for videos in favor of their file size and the respective traffic and memory usage that would produce.
+  Nevertheless, in the scope of camera uploads, the modification time of a file usually coincides with the capture time.
 
 ## See Also
 
 - [filen.io](https://filen.io)
 - [filen-sdk-ts](https://github.com/FilenCloudDienste/filen-sdk-ts)
+
+[date-format-link]: https://moment.github.io/luxon/#/formatting?id=table-of-tokens
+[timezones-link]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones

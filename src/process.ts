@@ -52,9 +52,14 @@ export default async function processFile(
 
       // If no date-time related operations are desired, skip this block in favor of performance
       if (useDateTime) {
-        // Retrieve time zone based off of EXIF data
-        const tzOffset: string = (await exifr.parse(fileContents, { pick: ['OffsetTimeOriginal'], reviveValues: false }))
-          ?.OffsetTimeOriginal
+        // Retrieve date-taken and time zone based off of EXIF data
+        // As raw string! exifr converts to Date in system time zone - which is incorrect here
+        const { DateTimeOriginal: exifDate, OffsetTimeOriginal: tzOffset } = await exifr.parse(fileContents, {
+          pick: ['DateTimeOriginal', 'OffsetTimeOriginal'],
+          reviveValues: false,
+        })
+
+        // Obtain time zone
         if (typeof tzOffset === 'string' && tzOffset.match(/^[+-]\d{2}:\d{2}$/) && DateTime.now().setZone(`utc${tzOffset}`).isValid) {
           tz = `utc${tzOffset}`
         } else {
@@ -70,8 +75,7 @@ export default async function processFile(
           }
         }
 
-        // Retrieve date-taken from EXIF (as raw string! exifr converts to Date in system time zone - which is incorrect here)
-        const exifDate: string = (await exifr.parse(fileContents, { pick: ['DateTimeOriginal'], reviveValues: false }))?.DateTimeOriginal
+        // Parse date-taken
         if (typeof exifDate === 'string') {
           // Parse string date according to EXIF specifications 'yyyy:MM:dd HH:mm:ss'. Just in case also test for 'yyyy-MM-dd HH:mm:ss'
           let exifDateParsed: DateTime = DateTime.fromFormat(exifDate, 'yyyy:MM:dd HH:mm:ss', { zone: tz })

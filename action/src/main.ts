@@ -6,10 +6,12 @@ async function run(): Promise<void> {
     email: string
     password: string
     twoFactorCode: string
+    twoFactorSecret: string
   } = {
     email: core.getInput('email', { required: true }),
     password: core.getInput('password', { required: true, trimWhitespace: false }),
     twoFactorCode: core.getInput('twoFactorCode'),
+    twoFactorSecret: core.getInput('twoFactorSecret'),
   }
   const rootPath: string = core.getInput('rootPath', { required: true })
   const dirPattern: string = core.getInput('dirPattern')

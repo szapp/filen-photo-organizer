@@ -49,7 +49,11 @@ dryRun = false) {
         await filen.login({
             email: credentials.email,
             password: credentials.password,
-            twoFactorCode: credentials.twoFactorCode ? new OTPAuth.TOTP({ secret: credentials.twoFactorCode }).generate() : undefined,
+            twoFactorCode: credentials.twoFactorCode
+                ? credentials.twoFactorCode
+                : credentials.twoFactorSecret
+                    ? new OTPAuth.TOTP({ secret: credentials.twoFactorSecret }).generate()
+                    : undefined,
         });
         // Read directory
         let dirContents = await filen.fs().readdir({

@@ -2,25 +2,38 @@ name: Filen Photo Organizer
 description: Organize photos in filen.io drive
 inputs:
   email:
-    description: 'User login email'
+    description: 'User login email of filen.io account'
     required: true
   password:
-    description: 'User login passwort'
+    description: 'User login passwort of filen.io account'
     required: true
   twoFactorCode:
-    description: 'Two factor secret (if enabled)'
+    description: >
+      Two factor code, i.e. generated OTP (if enabled).
+      If 2FA is enabled, either twoFactorSecret or twoFactorCode must be provided. If both are provided, twoFactorCode takes precedence.
+    required: false
+  twoFactorSecret:
+    description: >
+      Two factor secret (if enabled).
+      If 2FA is enabled, either twoFactorSecret or twoFactorCode must be provided. If both are provided, twoFactorCode takes precedence.
     required: false
   rootPath:
     description: 'Path to the photo directory'
     required: true
   dirPattern:
-    description: 'Date pattern to sort the photos into (if empty, no directories will be created)'
+    description: >
+      Date-time pattern of directories to sort the photos into (if '', no directories will be created)
+      The pattern is based on the date taken. [Format](https://moment.github.io/luxon/docs/manual/formatting.html#table-of-tokens)
     default: 'yyyy-MM'
   filePattern:
-    description: 'Date pattern for renaming the files based on date taken (if empty, preserve original file name)'
+    description: >
+      Date-time pattern for renaming the files based on date taken (if '', preserve original file name)
+      The pattern is based on the date taken. [Format](https://moment.github.io/luxon/docs/manual/formatting.html#table-of-tokens)
     default: 'yyyy-MM-dd_HH.mm.ss'
   fallbackTimeZone:
-    description: 'Time zone to assume for photo organization when no GPS metadata is available, i.e. the time zone in which the photos were taken, as TZ / IANA identifier'
+    description: >
+      Time zone to assume for photo organization when no time zone offset and GPS metadata is available, i.e. the time zone in which the photos were taken.
+      As TZ / IANA identifier (e.g. 'Europe/Berlin') [Identifiers](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
     default: 'Europe/Berlin'
   dryRun:
     description: 'Do not perform write operations on the filen.io'

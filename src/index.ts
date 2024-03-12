@@ -12,7 +12,7 @@ interface Return {
 }
 
 export default async function organizePhotos(
-  credentials: { email: string; password: string; twoFactorCode: string | undefined },
+  credentials: { email: string; password: string; twoFactorCode: string | undefined; twoFactorSecret: string | undefined },
   rootPath: string,
   dirPattern: string = 'yyyy-MM',
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
@@ -36,7 +36,11 @@ export default async function organizePhotos(
     await filen.login({
       email: credentials.email,
       password: credentials.password,
-      twoFactorCode: credentials.twoFactorCode ? new OTPAuth.TOTP({ secret: credentials.twoFactorCode }).generate() : undefined,
+      twoFactorCode: credentials.twoFactorCode
+        ? credentials.twoFactorCode
+        : credentials.twoFactorSecret
+          ? new OTPAuth.TOTP({ secret: credentials.twoFactorSecret }).generate()
+          : undefined,
     })
 
     // Read directory
