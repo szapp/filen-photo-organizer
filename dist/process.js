@@ -43,10 +43,12 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             if (useDateTime) {
                 // Retrieve date-taken and time zone based off of EXIF data
                 // As raw string! exifr converts to Date in system time zone - which is incorrect here
-                const { DateTimeOriginal: exifDate, OffsetTimeOriginal: tzOffset } = await exifr_1.default.parse(fileContents, {
+                const meta = await exifr_1.default.parse(fileContents, {
                     pick: ['DateTimeOriginal', 'OffsetTimeOriginal'],
                     reviveValues: false,
                 });
+                const exifDate = meta === null || meta === void 0 ? void 0 : meta.DateTimeOriginal;
+                const tzOffset = meta === null || meta === void 0 ? void 0 : meta.OffsetTimeOriginal;
                 // Obtain time zone
                 if (typeof tzOffset === 'string' && tzOffset.match(/^[+-]\d{2}:\d{2}$/) && luxon_1.DateTime.now().setZone(`utc${tzOffset}`).isValid) {
                     tz = `utc${tzOffset}`;
