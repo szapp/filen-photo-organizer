@@ -27,7 +27,7 @@ jobs:
         with:
           email: ${{ secrets.FILEN_EMAIL }}
           password: ${{ secrets.FILEN_PASSWORD }}
-          twoFactorCode:
+          twoFactorCode: ''
           twoFactorSecret: ${{ secrets.FILEN_TFA }}
           rootPath: ${{ vars.ROOT_PATH }}
           dirPattern: ${{ vars.DIR_PATTERN }}
