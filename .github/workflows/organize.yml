@@ -1,0 +1,36 @@
+name: Organize photos
+# For an easy to use template visit https://github.com/szapp/filen-photo-organizer-template
+
+# Run very two hours between 5:00 and 22:00 UTC or by manual dispatch
+# The most frequent a scheduled GitHub workflow can run is every 5 minutes
+# However, with the monthly 2.000 computing minutes quota for free GitHub accounts
+# and an estimated average run time of this workflow of 5 minutes at generous photographing,
+# a schedule of every second hour during day time or less is highly recommended
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '43 5-22/2 * * *'
+
+# If the job takes longer, queue the next execution to prevent overlapping, conflicting runs
+concurrency:
+  group: ${{ github.workflow }}
+
+# The configuration is completely outsourced into GitHub Action variables and secrets
+# This allows to update the settings without altering the scripts or pushing changes to the repository
+# Never expose any sensitive information directly, and always use GitHub secrets where necessary
+jobs:
+  organize:
+    name: Organize photos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: szapp/filen-photo-organizer@v3
+        with:
+          email: ${{ secrets.FILEN_EMAIL }}
+          password: ${{ secrets.FILEN_PASSWORD }}
+          twoFactorCode: ''
+          twoFactorSecret: ${{ secrets.FILEN_TFA }}
+          rootPath: ${{ vars.ROOT_PATH }}
+          dirPattern: ${{ vars.DIR_PATTERN }}
+          filePattern: ${{ vars.FILE_PATTERN }}
+          fallbackTimeZone: ${{ vars.FALLBACK_TIME_ZONE }}
+          dryRun: false
