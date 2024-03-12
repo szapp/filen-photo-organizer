@@ -23,11 +23,12 @@ jobs:
     name: Organize photos
     runs-on: ubuntu-latest
     steps:
-      - uses: szapp/filen-photo-organizer@v2
+      - uses: szapp/filen-photo-organizer@v3
         with:
           email: ${{ secrets.FILEN_EMAIL }}
           password: ${{ secrets.FILEN_PASSWORD }}
-          twoFactorCode: ${{ secrets.FILEN_TFA }}
+          twoFactorCode:
+          twoFactorSecret: ${{ secrets.FILEN_TFA }}
           rootPath: ${{ vars.ROOT_PATH }}
           dirPattern: ${{ vars.DIR_PATTERN }}
           filePattern: ${{ vars.FILE_PATTERN }}

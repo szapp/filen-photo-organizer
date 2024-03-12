@@ -1,6 +1,6 @@
 {
   "name": "filen-photo-organizer-action",
-  "version": "2.0.3",
+  "version": "3.0.0",
   "description": "GitHub action that organizes photos in filen.io drive",
   "main": "lib/main.js",
   "scripts": {
@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/szapp/filen-photo-organizer#readme",
   "devDependencies": {
-    "@types/node": "^20.11.25",
+    "@types/node": "^20.11.26",
     "@vercel/ncc": "^0.38.1",
     "typescript": "^5.4.2"
   },

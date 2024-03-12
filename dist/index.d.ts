@@ -7,6 +7,7 @@ export default function organizePhotos(credentials: {
     email: string;
     password: string;
     twoFactorCode: string | undefined;
+    twoFactorSecret: string | undefined;
 }, rootPath: string, dirPattern?: string, filePattern?: string, fallbackTimeZone?: string, // Filen.io location
 dryRun?: boolean): Promise<Return>;
 export {};
