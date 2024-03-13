@@ -26,9 +26,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - run: rm -rf dist
       - run: npm ci
       - run: npm run build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: build
-          path: dist
