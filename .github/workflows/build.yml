@@ -26,12 +26,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - run: rm -rf dist
       - run: npm ci
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:
           name: build
           path: dist
+          retention-days: 1
 
   build-action:
     name: build-action
@@ -42,9 +44,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - run: rm -rf dist
       - uses: actions/download-artifact@v4
         with:
           name: build
+          path: dist
       - run: |
           cd action
           npm ci
