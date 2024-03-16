@@ -23,24 +23,23 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         });
         if (!stats.isFile())
             return;
-        const useDateTime = dirPattern.length > 0 || filePattern.length > 0;
         let dateTaken;
         let fileContents;
         let tz = luxon_1.DateTime.now().zoneName;
         let { mime } = stats;
-        // Look for date-created in EXIF metadata
-        if (mime === 'image/jpeg' ||
-            mime === 'image/png' ||
-            mime === 'image/heic' ||
-            mime === 'image/heif' ||
-            mime === 'image/avif' ||
-            mime === 'image/tiff') {
-            // Read the file
-            fileContents = await filen.fs().readFile({
-                path: filePath,
-            });
-            // If no date-time related operations are desired, skip this block in favor of performance
-            if (useDateTime) {
+        // If no date-time related operations are desired, skip this block in favor of performance
+        if (dirPattern.length > 0 || filePattern.length > 0) {
+            // Look for date-created in EXIF metadata
+            if (mime === 'image/jpeg' ||
+                mime === 'image/png' ||
+                mime === 'image/heic' ||
+                mime === 'image/heif' ||
+                mime === 'image/avif' ||
+                mime === 'image/tiff') {
+                // Read the file
+                fileContents = await filen.fs().readFile({
+                    path: filePath,
+                });
                 // Retrieve date-taken and time zone based off of EXIF data
                 // As raw string! exifr converts to Date in system time zone - which is incorrect here
                 const meta = await exifr_1.default.parse(fileContents, {
@@ -87,9 +86,6 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                         dateTaken = exifDateParsed;
                 }
             }
-        }
-        // Skip if no date-time related operations are desired
-        if (useDateTime) {
             // Fall back to date in file name or file creation date or file modification date
             if (!dateTaken) {
                 const dateCreated = luxon_1.DateTime.fromMillis(stats.birthtimeMs, { zone: 'utc' }).setZone(tz);
