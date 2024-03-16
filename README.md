@@ -174,6 +174,15 @@ npm install szapp/filen-photo-organizer#fs-offline
   While that has reasonably overhead for images, this step is omitted for videos in favor of their file size and the respective traffic and memory usage that would produce.
   Nevertheless, in the scope of camera uploads, the modification time of a file usually coincides with the capture time.
 
+- On iOS, it is currently recommended to enable the toggle "Do not convert HEIC/HEIF" in the camera upload settings of the Filen app.
+  Conversion by the Filen app currently does not retain the metadata (time/date taken, GPS location, etc.).
+  The conversion carried out by this package here will alleviate that and convert to JPG with metadata.
+  An additional advantage is that the camera upload is much faster when not converting during upload.
+
+- When organizing the photos by file names and sorting them into directories, photo name and location will differ from the original.
+  Triggering "Reset uploaded assets" in the Filen mobile app will then naturally re-upload all photos to their original destination and file name.
+  If that step becomes necessary, this package will recognize identical photos that have already been uploaded and sorted before and prevent duplicates as best as possible.
+
 ## See Also
 
 - [filen.io](https://filen.io)
