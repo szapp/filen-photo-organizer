@@ -30,28 +30,27 @@ export default async function processFile(
     })
     if (!stats.isFile()) return
 
-    const useDateTime: boolean = dirPattern.length > 0 || filePattern.length > 0
     let dateTaken: DateTime
     let fileContents: Buffer
     let tz: string = DateTime.now().zoneName
     let { mime } = stats as FileMetadata
 
-    // Look for date-created in EXIF metadata
-    if (
-      mime === 'image/jpeg' ||
-      mime === 'image/png' ||
-      mime === 'image/heic' ||
-      mime === 'image/heif' ||
-      mime === 'image/avif' ||
-      mime === 'image/tiff'
-    ) {
-      // Read the file
-      fileContents = await filen.fs().readFile({
-        path: filePath,
-      })
+    // If no date-time related operations are desired, skip this block in favor of performance
+    if (dirPattern.length > 0 || filePattern.length > 0) {
+      // Look for date-created in EXIF metadata
+      if (
+        mime === 'image/jpeg' ||
+        mime === 'image/png' ||
+        mime === 'image/heic' ||
+        mime === 'image/heif' ||
+        mime === 'image/avif' ||
+        mime === 'image/tiff'
+      ) {
+        // Read the file
+        fileContents = await filen.fs().readFile({
+          path: filePath,
+        })
 
-      // If no date-time related operations are desired, skip this block in favor of performance
-      if (useDateTime) {
         // Retrieve date-taken and time zone based off of EXIF data
         // As raw string! exifr converts to Date in system time zone - which is incorrect here
         const meta = await exifr.parse(fileContents, {
@@ -97,10 +96,7 @@ export default async function processFile(
           if (exifDateParsed.isValid) dateTaken = exifDateParsed
         }
       }
-    }
 
-    // Skip if no date-time related operations are desired
-    if (useDateTime) {
       // Fall back to date in file name or file creation date or file modification date
       if (!dateTaken!) {
         const dateCreated: DateTime = DateTime.fromMillis(stats.birthtimeMs, { zone: 'utc' }).setZone(tz)
