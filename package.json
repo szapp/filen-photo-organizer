@@ -25,6 +25,7 @@
     "url": "https://github.com/szapp/filen-photo-organizer/issues"
   },
   "homepage": "https://github.com/szapp/filen-photo-organizer#readme",
+  "funding": "https://ko-fi.com/szapp",
   "devDependencies": {
     "@types/luxon": "^3.4.2",
     "@types/node": "^20.11.28",
