@@ -25,7 +25,8 @@ After clicking, follow the instructions in the README of the created repository.
 - Identical files are deleted in case they are uploaded again - based on date taken and content
 - Use immediately with GitHub Action scheduled workflows to running continuously in the background
 
-> **User warning:** The underlying [Filen SDK](https://github.com/FilenCloudDienste/filen-sdk-ts) is under active development and not production ready.
+> [!Important]
+> The underlying [Filen SDK](https://github.com/FilenCloudDienste/filen-sdk-ts) is under active development and not production ready.
 > Although `filen-photo-organizer` does not delete any data permanently (files are moved to trash), please use at your own risk.
 > It is recommended to first operate on a dummy directory until comfortable to apply to actual data.
 
@@ -115,7 +116,8 @@ For manual usage of the GitHub Action in a workflow, here is a minimal example w
 Find a full workflow example [here](https://github.com/szapp/filen-photo-organizer/blob/main/.github/workflows/organize.yml).
 For easy usage, refer to the template repository: [szapp/filen-photo-organizer-template](https://github.com/szapp/filen-photo-organizer-template)
 
-> ⚠️ **Warning:** The login information (`email`, `password`, `twoFactorCode`, and `twoFactorSecret`) are sensitive information.
+> [!Warning]
+> The login information (`email`, `password`, `twoFactorCode`, and `twoFactorSecret`) are sensitive information.
 > Make sure to never publish them to GitHub or share them with anyone.
 > Specify them using GitHub secrets only.
 > If exposed, these values allow arbitrary access to your Filen drive.  
