@@ -167,7 +167,7 @@ Mind the different function signature of `organizePhotos` in the source code.
 npm install szapp/filen-photo-organizer#fs-offline
 ```
 
-## Finaly notes
+## Final notes
 
 - For videos only the file modification time and file name are considered for time-based operations.
   Reading the metadata of a file requires to load the entire file into memory, due to the encryption.
