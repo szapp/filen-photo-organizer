@@ -72,12 +72,12 @@ For manual usage of the GitHub Action in a workflow, here is a minimal example w
     # Required
     password: ''
 
-    # Two factor code, i.e. generated OTP (if enabled).
+    # Two factor code, i.e. generated OTP (if enabled)
     # If 2FA is enabled, either twoFactorSecret or twoFactorCode must be provided. If both are provided, twoFactorCode takes precedence.
     # Optional
     twoFactorCode: ''
 
-    # Two factor secret (if enabled).
+    # Two factor secret (if enabled)
     # If 2FA is enabled, either twoFactorSecret or twoFactorCode must be provided. If both are provided, twoFactorCode takes precedence.
     # Optional
     twoFactorSecret: ''
@@ -86,21 +86,21 @@ For manual usage of the GitHub Action in a workflow, here is a minimal example w
     # Required
     rootPath: ''
 
-    # Date-time pattern of directories to sort the photos into (if '', no directories will be created)
+    # Date-time pattern of directories to sort the photos into (if '', no directories will be created and 'filePattern' must not be '')
     # The pattern is based on the date taken
     # Format: https://moment.github.io/luxon/docs/manual/formatting.html#table-of-tokens
     #
     # Default: 'yyyy-MM'
     dirPattern: 'yyyy-MM'
 
-    # Date-time pattern for renaming the files based on date taken (if '', preserve original file name)
+    # Date-time pattern for renaming the files based on date taken (if '', preserve original file name and 'dirPattern' must not be '')
     # The pattern is based on the date taken.
     # Format: https://moment.github.io/luxon/docs/manual/formatting.html#table-of-tokens
     #
     # Default: 'yyyy-MM-dd_HH.mm.ss'
     filePattern: 'yyyy-MM-dd_HH.mm.ss'
 
-    # Time zone to assume for photo organization when no time zone offset and GPS metadata is available, i.e. the time zone in which the photos were taken.
+    # Time zone to assume for photo organization when no time zone offset and GPS metadata is available, i.e. the time zone in which the photos were taken
     # As TZ / IANA identifier (e.g. 'Europe/Berlin')
     # Identifiers: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
     #

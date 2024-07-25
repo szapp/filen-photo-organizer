@@ -22,12 +22,12 @@ inputs:
     required: true
   dirPattern:
     description: >
-      Date-time pattern of directories to sort the photos into (if '', no directories will be created)
+      Date-time pattern of directories to sort the photos into (if '', no directories will be created and 'filePattern' must not be '').
       The pattern is based on the date taken. [Format](https://moment.github.io/luxon/docs/manual/formatting.html#table-of-tokens)
     default: 'yyyy-MM'
   filePattern:
     description: >
-      Date-time pattern for renaming the files based on date taken (if '', preserve original file name)
+      Date-time pattern for renaming the files based on date taken (if '', preserve original file name and 'dirPattern' must not be '').
       The pattern is based on the date taken. [Format](https://moment.github.io/luxon/docs/manual/formatting.html#table-of-tokens)
     default: 'yyyy-MM-dd_HH.mm.ss'
   fallbackTimeZone:
