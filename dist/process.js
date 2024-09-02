@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = processFile;
 const exifr_1 = __importDefault(require("exifr"));
 const fs_1 = __importDefault(require("fs"));
 const geo_tz_1 = require("geo-tz");
@@ -250,5 +251,4 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         throw error;
     }
 }
-exports.default = processFile;
 //# sourceMappingURL=process.js.map

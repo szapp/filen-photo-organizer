@@ -26,6 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = organizePhotos;
 const async_mutex_1 = require("async-mutex");
 const sdk_1 = __importDefault(require("@filen/sdk"));
 const luxon_1 = require("luxon");
@@ -81,6 +82,5 @@ dryRun = false) {
     console.log(`Done (${numFiles - numErrors}/${numFiles} files succeeded)`);
     return { numFiles, numErrors, errors };
 }
-exports.default = organizePhotos;
 module.exports = organizePhotos;
 //# sourceMappingURL=index.js.map
