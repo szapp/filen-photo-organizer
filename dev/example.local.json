@@ -1,0 +1,18 @@
+{
+  "credentials": {
+    "email": "john@example.com",
+    "password": ""
+  },
+  "credentials_other": {
+    "email": "jane@example.com",
+    "password": "",
+    "twoFactorSecret": ""
+  },
+  "rootPath": "/Photos/",
+  "rootPath_offline": "%USERPROFILE%/Desktop/Photos/",
+  "rootPath_other": "/Photos/",
+  "dirPattern": "yyyy-MM",
+  "filePattern": "yyyy-MM-dd_HH.mm.ss",
+  "fallbackTimeZone": "Europe/Berlin",
+  "dryrun": true
+}
