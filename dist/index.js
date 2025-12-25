@@ -72,7 +72,7 @@ dryRun = false) {
         errors = processOutputs
             .filter((p) => p.status === 'rejected')
             .reduce((out, p) => out.concat(p.reason), [])
-            .map((r) => { var _a; return (_a = r === null || r === void 0 ? void 0 : r.message) !== null && _a !== void 0 ? _a : String(r); });
+            .map((r) => r?.message ?? String(r));
         numErrors = errors.length;
     }
     finally {

@@ -26,6 +26,9 @@
   },
   "homepage": "https://github.com/szapp/filen-photo-organizer#readme",
   "funding": "https://ko-fi.com/szapp",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "devDependencies": {
     "@types/luxon": "^3.4.2",
     "@types/node": "^20.11.28",
@@ -47,5 +50,8 @@
     "luxon": "^3.4.4",
     "otpauth": "^9.2.2",
     "uuid": "^9.0.1"
+  },
+  "volta": {
+    "node": "24.12.0"
   }
 }
