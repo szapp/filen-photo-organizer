@@ -16,6 +16,7 @@ export default async function processFile(
   filePath: string,
   dirPattern: string = 'yyyy-MM',
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
+  keepOriginals: boolean = false,
   writeAccess: Mutex,
   dryRun: boolean = false
 ): Promise<void> {
@@ -187,10 +188,11 @@ export default async function processFile(
           const checkFileContents: Buffer = await filen.fs().readFile({
             path: posix.join(newDirPath, checkFileName),
           })
-          // Files are identical: Abort and delete one
+          // Files are identical: Abort and skip/delete one
           if (!fileContents.compare(checkFileContents)) {
-            console.log(`Delete '${fileName}', because it already exists as '${posix.join(newDirName, checkFileName)}'`)
-            if (!dryRun) {
+            const operation = keepOriginals ? 'Skip' : 'Delete'
+            console.log(`${operation} '${fileName}', because it already exists as '${posix.join(newDirName, checkFileName)}'`)
+            if (!dryRun && !keepOriginals) {
               await filen.fs().unlink({
                 path: filePath,
                 permanent: false,
@@ -228,18 +230,28 @@ export default async function processFile(
           })
           fs.unlinkSync(localTmpFilePath)
 
-          await filen.fs().unlink({
-            path: filePath,
-            permanent: false,
-          })
+          if (!keepOriginals) {
+            await filen.fs().unlink({
+              path: filePath,
+              permanent: false,
+            })
+          }
         }
       } else {
-        console.log(`Move '${fileName}' to '${newFileSubpath}'`)
+        const operation = keepOriginals ? 'Copy' : 'Move'
+        console.log(`${operation} '${fileName}' to '${newFileSubpath}'`)
         if (!dryRun) {
-          await filen.fs().rename({
-            from: filePath,
-            to: newFilePath,
-          })
+          if (keepOriginals) {
+            await filen.fs().copy({
+              from: filePath,
+              to: newFilePath,
+            })
+          } else {
+            await filen.fs().rename({
+              from: filePath,
+              to: newFilePath,
+            })
+          }
         }
       }
     } finally {

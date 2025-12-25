@@ -44,7 +44,7 @@ const OTPAuth = __importStar(require("otpauth"));
 const path_1 = require("path");
 const process_js_1 = __importDefault(require("./process.js"));
 async function organizePhotos(credentials, rootPath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', fallbackTimeZone = 'Europe/Berlin', // Filen.io location
-dryRun = false) {
+keepOriginals = false, dryRun = false) {
     const filen = new sdk_1.default({
         metadataCache: true,
     });
@@ -76,7 +76,7 @@ dryRun = false) {
         // Nevertheless, create a mutex for writing operations to avoid file name collisions
         const writeAccess = new async_mutex_1.Mutex(new Error('Something went wrong with the mutex!'));
         console.log(`Process ${dirContents.length} files in '${rootPath}'`);
-        const processOutputs = await Promise.allSettled(dirContents.map((fileName) => (0, process_js_1.default)(filen, path_1.posix.join(rootPath, fileName), dirPattern, filePattern, writeAccess, dryRun)));
+        const processOutputs = await Promise.allSettled(dirContents.map((fileName) => (0, process_js_1.default)(filen, path_1.posix.join(rootPath, fileName), dirPattern, filePattern, keepOriginals, writeAccess, dryRun)));
         // Collect rate of success
         numFiles = dirContents.length;
         errors = processOutputs

@@ -35,6 +35,9 @@ inputs:
       Time zone to assume for photo organization when no time zone offset and GPS metadata is available, i.e. the time zone in which the photos were taken.
       As TZ / IANA identifier (e.g. 'Europe/Berlin') [Identifiers](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
     default: 'Europe/Berlin'
+  keepOriginals:
+    description: 'Keep the original files instead of moving/deleting them'
+    default: false
   dryRun:
     description: 'Do not perform write operations on the filen.io'
     default: false

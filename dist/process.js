@@ -13,7 +13,7 @@ const os_1 = __importDefault(require("os"));
 const path_1 = require("path");
 const uuid_1 = require("uuid");
 const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae';
-async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', writeAccess, dryRun = false) {
+async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', keepOriginals = false, writeAccess, dryRun = false) {
     const fileName = path_1.posix.basename(filePath);
     const rootPath = path_1.posix.dirname(filePath);
     let fileExt = path_1.posix.extname(fileName);
@@ -168,10 +168,11 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                     const checkFileContents = await filen.fs().readFile({
                         path: path_1.posix.join(newDirPath, checkFileName),
                     });
-                    // Files are identical: Abort and delete one
+                    // Files are identical: Abort and skip/delete one
                     if (!fileContents.compare(checkFileContents)) {
-                        console.log(`Delete '${fileName}', because it already exists as '${path_1.posix.join(newDirName, checkFileName)}'`);
-                        if (!dryRun) {
+                        const operation = keepOriginals ? 'Skip' : 'Delete';
+                        console.log(`${operation} '${fileName}', because it already exists as '${path_1.posix.join(newDirName, checkFileName)}'`);
+                        if (!dryRun && !keepOriginals) {
                             await filen.fs().unlink({
                                 path: filePath,
                                 permanent: false,
@@ -208,19 +209,30 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                         source: localTmpFilePath,
                     });
                     fs_1.default.unlinkSync(localTmpFilePath);
-                    await filen.fs().unlink({
-                        path: filePath,
-                        permanent: false,
-                    });
+                    if (!keepOriginals) {
+                        await filen.fs().unlink({
+                            path: filePath,
+                            permanent: false,
+                        });
+                    }
                 }
             }
             else {
-                console.log(`Move '${fileName}' to '${newFileSubpath}'`);
+                const operation = keepOriginals ? 'Copy' : 'Move';
+                console.log(`${operation} '${fileName}' to '${newFileSubpath}'`);
                 if (!dryRun) {
-                    await filen.fs().rename({
-                        from: filePath,
-                        to: newFilePath,
-                    });
+                    if (keepOriginals) {
+                        await filen.fs().copy({
+                            from: filePath,
+                            to: newFilePath,
+                        });
+                    }
+                    else {
+                        await filen.fs().rename({
+                            from: filePath,
+                            to: newFilePath,
+                        });
+                    }
                 }
             }
         }

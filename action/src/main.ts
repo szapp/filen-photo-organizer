@@ -17,11 +17,12 @@ async function run(): Promise<void> {
   const dirPattern: string = core.getInput('dirPattern')
   const filePattern: string = core.getInput('filePattern')
   const fallbackTimeZone: string = core.getInput('fallbackTimeZone')
+  const keepOriginals: boolean = core.getBooleanInput('keepOriginals')
   const dryRun: boolean = core.getBooleanInput('dryRun')
 
   let result: { numFiles: number; numErrors: number; errors: string[] }
   try {
-    result = await organizePhotos(credentials, rootPath, dirPattern, filePattern, fallbackTimeZone, dryRun)
+    result = await organizePhotos(credentials, rootPath, dirPattern, filePattern, fallbackTimeZone, keepOriginals, dryRun)
   } catch (error) {
     if (!(error instanceof Error)) error = new Error(String(error))
     core.setFailed(error as Error)

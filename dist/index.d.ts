@@ -9,5 +9,5 @@ export default function organizePhotos(credentials: {
     twoFactorCode: string | undefined;
     twoFactorSecret: string | undefined;
 }, rootPath: string, dirPattern?: string, filePattern?: string, fallbackTimeZone?: string, // Filen.io location
-dryRun?: boolean): Promise<Return>;
+keepOriginals?: boolean, dryRun?: boolean): Promise<Return>;
 export {};
