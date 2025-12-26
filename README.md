@@ -38,6 +38,14 @@ This repository contains a GitHub Action that can be used without any coding kno
 
 The setup is explained in an easy to clone template repository at https://github.com/szapp/filen-photo-organizer-template. Click the link or the button above and follow the instructions there.
 
+### V4
+
+Allow retaining the original files, to recurse into sub-directories, and to turn off HEIC/HEIF conversion.
+To prevent repeated camera upload by the new mobile app, the action input `keepOriginals` was added.
+To pick up photos in nested sub-directories, the action inputs `recursive` and `destinationPath` were added.
+To control whether HEIC/HEIF photos are converted, the action input `convertHeic` was added.
+All of the new inputs have defaults and are optional, such that no adjustments are necessary when updating.
+
 ### V3
 
 Differentiate between two factor code and two factor secret.
@@ -85,6 +93,28 @@ For manual usage of the GitHub Action in a workflow, here is a minimal example w
     # Path to the photo directory
     # Required
     rootPath: ''
+
+    # Recurse into subdirectories when collecting files.
+    # If true, 'destinationPath' must be provided to prevent infinite recursion.
+    #
+    # Default: false
+    recursive: false
+
+    # Convert HEIC/HEIF photos to JPG
+    #
+    # Default: true
+    convertHeic: true
+
+    # Keep the original files instead of moving/deleting them
+    #
+    # Default: false
+    keepOriginals: false
+
+    # Path to the destination relative to 'rootPath'. An absolute path is possible via posix path, i.e. leading forward slash.
+    # If 'recursive' is true, the destination path needs to lie outside of the rootPath, e.g. start with '../' or '/'.
+    #
+    # Default: ''
+    destinationPath: ''
 
     # Date-time pattern of directories to sort the photos into (if '', no directories will be created and 'filePattern' must not be '')
     # The pattern is based on the date taken
