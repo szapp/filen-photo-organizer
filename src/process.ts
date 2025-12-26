@@ -13,13 +13,14 @@ const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae'
 
 export default async function processFile(
   filen: FilenSDK,
+  writeAccess: Mutex,
   rootPath: string,
   fileName: string,
   destPath: string = '',
   dirPattern: string = 'yyyy-MM',
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
-  keepOriginals: boolean = false,
-  writeAccess: Mutex,
+  convertHeic: boolean = true,
+  keepOriginal: boolean = false,
   dryRun: boolean = false
 ): Promise<void> {
   const filePath: string = posix.join(rootPath, fileName)
@@ -150,7 +151,7 @@ export default async function processFile(
     let newBaseName: string = filePattern ? dateTaken!.toFormat(filePattern) : posix.basename(filePath, fileExt)
 
     // Convert HEIF
-    if (mime === 'image/heic' || mime === 'image/heif') {
+    if ((mime === 'image/heic' || mime === 'image/heif') && convertHeic) {
       try {
         fileContents = (await convert(fileContents!)) as Buffer
       } catch (e) {
@@ -193,9 +194,9 @@ export default async function processFile(
           })
           // Files are identical: Abort and skip/delete one
           if (!fileContents.compare(checkFileContents)) {
-            const operation = keepOriginals ? 'Skip' : 'Delete'
+            const operation = keepOriginal ? 'Skip' : 'Delete'
             console.log(`${operation} '${srcPath}', because it already exists as '${posix.join(newDirName, checkFileName)}'`)
-            if (!dryRun && !keepOriginals) {
+            if (!dryRun && !keepOriginal) {
               await filen.fs().unlink({
                 path: filePath,
                 permanent: false,
@@ -218,7 +219,7 @@ export default async function processFile(
       const newFileName: string = `${newBaseName}${fileExt}`
       const newFilePath: string = posix.resolve(rootPath, destPath, newDirName, newFileName)
       const newFileSubpath: string = posix.relative(rootPath, newFilePath)
-      if (mime === 'image/heic' || mime === 'image/heif') {
+      if ((mime === 'image/heic' || mime === 'image/heif') && convertHeic) {
         console.log(`Convert '${srcPath}' to '${newFileSubpath}'`)
         if (!dryRun) {
           // In order to retain the modification date, write the file locally, upload it, and delete the local file
@@ -233,7 +234,7 @@ export default async function processFile(
           })
           fs.unlinkSync(localTmpFilePath)
 
-          if (!keepOriginals) {
+          if (!keepOriginal) {
             await filen.fs().unlink({
               path: filePath,
               permanent: false,
@@ -241,10 +242,10 @@ export default async function processFile(
           }
         }
       } else {
-        const operation = keepOriginals ? 'Copy' : 'Move'
+        const operation = keepOriginal ? 'Copy' : 'Move'
         console.log(`${operation} '${srcPath}' to '${newFileSubpath}'`)
         if (!dryRun) {
-          if (keepOriginals) {
+          if (keepOriginal) {
             await filen.fs().copy({
               from: filePath,
               to: newFilePath,

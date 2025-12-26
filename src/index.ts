@@ -15,11 +15,12 @@ export default async function organizePhotos(
   credentials: { email: string; password: string; twoFactorCode: string | undefined; twoFactorSecret: string | undefined },
   rootPath: string,
   recursive: boolean = false,
+  convertHeic: boolean = true,
+  keepOriginals: boolean = false,
   destPath: string = '',
   dirPattern: string = 'yyyy-MM',
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
   fallbackTimeZone: string = 'Europe/Berlin', // Filen.io location
-  keepOriginals: boolean = false,
   dryRun: boolean = false
 ): Promise<Return> {
   const filen: FilenSDK = new FilenSDK({
@@ -67,7 +68,7 @@ export default async function organizePhotos(
     console.log(`Process ${dirContents.length} files in '${rootPath}'`)
     const processOutputs: PromiseSettledResult<void>[] = await Promise.allSettled(
       dirContents.map((fileName: string) =>
-        processFile(filen, rootPath, fileName, destPath, dirPattern, filePattern, keepOriginals, writeAccess, dryRun)
+        processFile(filen, writeAccess, rootPath, fileName, destPath, dirPattern, filePattern, convertHeic, keepOriginals, dryRun)
       )
     )
 

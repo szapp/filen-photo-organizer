@@ -25,6 +25,12 @@ inputs:
       Recurse into subdirectories when collecting files.
       If true, 'destinationPath' must be provided to prevent infinite recursion.
     default: false
+  convertHeic:
+    description: 'Convert HEIC/HEIF photos to JPG'
+    default: true
+  keepOriginals:
+    description: 'Keep the original files instead of moving/deleting them'
+    default: false
   destinationPath:
     description: >
       Path to the destination relative to 'rootPath'. An absolute path is possible via posix path, i.e. leading forward slash.
@@ -45,9 +51,6 @@ inputs:
       Time zone to assume for photo organization when no time zone offset and GPS metadata is available, i.e. the time zone in which the photos were taken.
       As TZ / IANA identifier (e.g. 'Europe/Berlin') [Identifiers](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
     default: 'Europe/Berlin'
-  keepOriginals:
-    description: 'Keep the original files instead of moving/deleting them'
-    default: false
   dryRun:
     description: 'Do not perform write operations on the filen.io'
     default: false

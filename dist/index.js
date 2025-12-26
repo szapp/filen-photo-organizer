@@ -43,8 +43,8 @@ const luxon_1 = require("luxon");
 const OTPAuth = __importStar(require("otpauth"));
 const path_1 = require("path");
 const process_js_1 = __importDefault(require("./process.js"));
-async function organizePhotos(credentials, rootPath, recursive = false, destPath = '', dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', fallbackTimeZone = 'Europe/Berlin', // Filen.io location
-keepOriginals = false, dryRun = false) {
+async function organizePhotos(credentials, rootPath, recursive = false, convertHeic = true, keepOriginals = false, destPath = '', dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', fallbackTimeZone = 'Europe/Berlin', // Filen.io location
+dryRun = false) {
     const filen = new sdk_1.default({
         metadataCache: true,
     });
@@ -82,7 +82,7 @@ keepOriginals = false, dryRun = false) {
         // Nevertheless, create a mutex for writing operations to avoid file name collisions
         const writeAccess = new async_mutex_1.Mutex(new Error('Something went wrong with the mutex!'));
         console.log(`Process ${dirContents.length} files in '${rootPath}'`);
-        const processOutputs = await Promise.allSettled(dirContents.map((fileName) => (0, process_js_1.default)(filen, rootPath, fileName, destPath, dirPattern, filePattern, keepOriginals, writeAccess, dryRun)));
+        const processOutputs = await Promise.allSettled(dirContents.map((fileName) => (0, process_js_1.default)(filen, writeAccess, rootPath, fileName, destPath, dirPattern, filePattern, convertHeic, keepOriginals, dryRun)));
         // Collect rate of success
         numFiles = dirContents.length;
         errors = processOutputs

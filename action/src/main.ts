@@ -15,11 +15,12 @@ async function run(): Promise<void> {
   }
   const rootPath: string = core.getInput('rootPath', { required: true })
   const recursive: boolean = core.getBooleanInput('recursive')
+  const convertHeic: boolean = core.getBooleanInput('convertHeic')
+  const keepOriginals: boolean = core.getBooleanInput('keepOriginals')
   const destPath: string = core.getInput('destinationPath')
   const dirPattern: string = core.getInput('dirPattern')
   const filePattern: string = core.getInput('filePattern')
   const fallbackTimeZone: string = core.getInput('fallbackTimeZone')
-  const keepOriginals: boolean = core.getBooleanInput('keepOriginals')
   const dryRun: boolean = core.getBooleanInput('dryRun')
 
   let result: { numFiles: number; numErrors: number; errors: string[] }
@@ -28,11 +29,12 @@ async function run(): Promise<void> {
       credentials,
       rootPath,
       recursive,
+      convertHeic,
+      keepOriginals,
       destPath,
       dirPattern,
       filePattern,
       fallbackTimeZone,
-      keepOriginals,
       dryRun
     )
   } catch (error) {
