@@ -20,6 +20,16 @@ inputs:
   rootPath:
     description: 'Path to the photo directory'
     required: true
+  recursive:
+    description: >
+      Recurse into subdirectories when collecting files.
+      If true, 'destinationPath' must be provided to prevent infinite recursion.
+    default: false
+  destinationPath:
+    description: >
+      Path to the destination relative to 'rootPath'. An absolute path is possible via posix path, i.e. leading forward slash.
+      If 'recursive' is true, the destination path needs to lie outside of the rootPath, e.g. start with '../' or '/'.
+    default: ''
   dirPattern:
     description: >
       Date-time pattern of directories to sort the photos into (if '', no directories will be created and 'filePattern' must not be '').

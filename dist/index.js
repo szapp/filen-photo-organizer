@@ -43,7 +43,7 @@ const luxon_1 = require("luxon");
 const OTPAuth = __importStar(require("otpauth"));
 const path_1 = require("path");
 const process_js_1 = __importDefault(require("./process.js"));
-async function organizePhotos(credentials, rootPath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', fallbackTimeZone = 'Europe/Berlin', // Filen.io location
+async function organizePhotos(credentials, rootPath, recursive = false, destPath = '', dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', fallbackTimeZone = 'Europe/Berlin', // Filen.io location
 keepOriginals = false, dryRun = false) {
     const filen = new sdk_1.default({
         metadataCache: true,
@@ -52,6 +52,11 @@ keepOriginals = false, dryRun = false) {
     luxon_1.Settings.defaultZone = fallbackTimeZone;
     if (luxon_1.DateTime.local().zoneName === null)
         throw new Error('Error: Invalid time zone. Please specify a valid IANA zone');
+    // Prevent recursive infinite loop
+    const potentialDestDir = path_1.posix.join(destPath, dirPattern);
+    if (recursive && !potentialDestDir.startsWith('/') && !potentialDestDir.startsWith('..')) {
+        throw new Error('Error: Destination cannot be inside the root directory when recursive is set to true');
+    }
     // Report
     let numFiles = 0;
     let numErrors = 0;
@@ -69,6 +74,7 @@ keepOriginals = false, dryRun = false) {
         // Read directory
         let dirContents = await filen.fs().readdir({
             path: rootPath,
+            recursive: recursive,
         });
         // Exclude directories by inspecting file extensions
         dirContents = dirContents.filter((name) => name.indexOf('.') !== -1).sort();
@@ -76,7 +82,7 @@ keepOriginals = false, dryRun = false) {
         // Nevertheless, create a mutex for writing operations to avoid file name collisions
         const writeAccess = new async_mutex_1.Mutex(new Error('Something went wrong with the mutex!'));
         console.log(`Process ${dirContents.length} files in '${rootPath}'`);
-        const processOutputs = await Promise.allSettled(dirContents.map((fileName) => (0, process_js_1.default)(filen, path_1.posix.join(rootPath, fileName), dirPattern, filePattern, keepOriginals, writeAccess, dryRun)));
+        const processOutputs = await Promise.allSettled(dirContents.map((fileName) => (0, process_js_1.default)(filen, rootPath, fileName, destPath, dirPattern, filePattern, keepOriginals, writeAccess, dryRun)));
         // Collect rate of success
         numFiles = dirContents.length;
         errors = processOutputs

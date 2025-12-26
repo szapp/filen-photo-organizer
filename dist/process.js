@@ -13,9 +13,10 @@ const os_1 = __importDefault(require("os"));
 const path_1 = require("path");
 const uuid_1 = require("uuid");
 const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae';
-async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', keepOriginals = false, writeAccess, dryRun = false) {
-    const fileName = path_1.posix.basename(filePath);
-    const rootPath = path_1.posix.dirname(filePath);
+async function processFile(filen, rootPath, fileName, destPath = '', dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', keepOriginals = false, writeAccess, dryRun = false) {
+    const filePath = path_1.posix.join(rootPath, fileName);
+    const srcPath = fileName;
+    fileName = path_1.posix.basename(fileName);
     let fileExt = path_1.posix.extname(fileName);
     try {
         // Only operate on files
@@ -124,7 +125,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         }
         // Make path names
         const newDirName = dirPattern ? dateTaken.toFormat(dirPattern) : '';
-        const newDirPath = path_1.posix.join(rootPath, newDirName);
+        const newDirPath = path_1.posix.resolve(rootPath, destPath, newDirName);
         let newBaseName = filePattern ? dateTaken.toFormat(filePattern) : path_1.posix.basename(filePath, fileExt);
         // Convert HEIF
         if (mime === 'image/heic' || mime === 'image/heif') {
@@ -171,7 +172,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                     // Files are identical: Abort and skip/delete one
                     if (!fileContents.compare(checkFileContents)) {
                         const operation = keepOriginals ? 'Skip' : 'Delete';
-                        console.log(`${operation} '${fileName}', because it already exists as '${path_1.posix.join(newDirName, checkFileName)}'`);
+                        console.log(`${operation} '${srcPath}', because it already exists as '${path_1.posix.join(newDirName, checkFileName)}'`);
                         if (!dryRun && !keepOriginals) {
                             await filen.fs().unlink({
                                 path: filePath,
@@ -190,12 +191,12 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                 const idxNext = Math.min(...idxCandidates.filter((x) => x && !idxTaken.includes(x)));
                 newBaseName += '_' + String(idxNext).padStart(3, '0');
             }
-            // Rename (move) or upload and delete (convert)
+            // Rename (move/copy) or upload and delete (convert)
             const newFileName = `${newBaseName}${fileExt}`;
-            const newFileSubpath = path_1.posix.join(newDirName, newFileName);
-            const newFilePath = path_1.posix.join(rootPath, newFileSubpath);
+            const newFilePath = path_1.posix.resolve(rootPath, destPath, newDirName, newFileName);
+            const newFileSubpath = path_1.posix.relative(rootPath, newFilePath);
             if (mime === 'image/heic' || mime === 'image/heif') {
-                console.log(`Convert '${fileName}' to '${newFileSubpath}'`);
+                console.log(`Convert '${srcPath}' to '${newFileSubpath}'`);
                 if (!dryRun) {
                     // In order to retain the modification date, write the file locally, upload it, and delete the local file
                     const localTmpDirPath = path_1.posix.join(filen.config.tmpPath || os_1.default.tmpdir(), 'filen-sdk', 'filen-photo-organizer');
@@ -219,7 +220,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
             }
             else {
                 const operation = keepOriginals ? 'Copy' : 'Move';
-                console.log(`${operation} '${fileName}' to '${newFileSubpath}'`);
+                console.log(`${operation} '${srcPath}' to '${newFileSubpath}'`);
                 if (!dryRun) {
                     if (keepOriginals) {
                         await filen.fs().copy({
