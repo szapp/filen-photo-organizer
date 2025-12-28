@@ -52,9 +52,14 @@ export default async function processFile(
         mime === 'image/tiff'
       ) {
         // Read the file
-        fileContents = await filen.fs().readFile({
-          path: filePath,
-        })
+        const release_0 = await writeAccess.acquire()
+        try {
+          fileContents = await filen.fs().readFile({
+            path: filePath,
+          })
+        } finally {
+          release_0()
+        }
 
         // Retrieve date-taken and time zone based off of EXIF data
         // As raw string! exifr converts to Date in system time zone - which is incorrect here
@@ -162,7 +167,7 @@ export default async function processFile(
     }
 
     // Check for existing files with the same name sequentially to avoid file name collisions
-    const release = await writeAccess.acquire()
+    const release_1 = await writeAccess.acquire()
     try {
       // Check destination directory for files with matching file name
       let newDirContents: string[]
@@ -259,7 +264,7 @@ export default async function processFile(
         }
       }
     } finally {
-      release()
+      release_1()
     }
   } catch (e) {
     // Format, print, and throw (reject promise)
