@@ -20,6 +20,22 @@ inputs:
   rootPath:
     description: 'Path to the photo directory'
     required: true
+  recursive:
+    description: >
+      Recurse into subdirectories when collecting files.
+      If true, 'destinationPath' must be provided to prevent infinite recursion.
+    default: false
+  convertHeic:
+    description: 'Convert HEIC/HEIF photos to JPG'
+    default: true
+  keepOriginals:
+    description: 'Keep the original files instead of moving/deleting them'
+    default: false
+  destinationPath:
+    description: >
+      Path to the destination relative to 'rootPath'. An absolute path is possible via posix path, i.e. leading forward slash.
+      If 'recursive' is true, the destination path needs to lie outside of the rootPath, e.g. start with '../' or '/'.
+    default: ''
   dirPattern:
     description: >
       Date-time pattern of directories to sort the photos into (if '', no directories will be created and 'filePattern' must not be '').
@@ -39,7 +55,7 @@ inputs:
     description: 'Do not perform write operations on the filen.io'
     default: false
 runs:
-  using: node20
+  using: node24
   main: 'action/dist/index.js'
 branding:
   icon: image

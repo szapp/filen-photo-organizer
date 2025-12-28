@@ -8,6 +8,6 @@ export default function organizePhotos(credentials: {
     password: string;
     twoFactorCode: string | undefined;
     twoFactorSecret: string | undefined;
-}, rootPath: string, dirPattern?: string, filePattern?: string, fallbackTimeZone?: string, // Filen.io location
+}, rootPath: string, recursive?: boolean, convertHeic?: boolean, keepOriginals?: boolean, destPath?: string, dirPattern?: string, filePattern?: string, fallbackTimeZone?: string, // Filen.io location
 dryRun?: boolean): Promise<Return>;
 export {};

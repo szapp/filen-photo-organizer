@@ -14,6 +14,10 @@ async function run(): Promise<void> {
     twoFactorSecret: core.getInput('twoFactorSecret'),
   }
   const rootPath: string = core.getInput('rootPath', { required: true })
+  const recursive: boolean = core.getBooleanInput('recursive')
+  const convertHeic: boolean = core.getBooleanInput('convertHeic')
+  const keepOriginals: boolean = core.getBooleanInput('keepOriginals')
+  const destPath: string = core.getInput('destinationPath')
   const dirPattern: string = core.getInput('dirPattern')
   const filePattern: string = core.getInput('filePattern')
   const fallbackTimeZone: string = core.getInput('fallbackTimeZone')
@@ -21,7 +25,18 @@ async function run(): Promise<void> {
 
   let result: { numFiles: number; numErrors: number; errors: string[] }
   try {
-    result = await organizePhotos(credentials, rootPath, dirPattern, filePattern, fallbackTimeZone, dryRun)
+    result = await organizePhotos(
+      credentials,
+      rootPath,
+      recursive,
+      convertHeic,
+      keepOriginals,
+      destPath,
+      dirPattern,
+      filePattern,
+      fallbackTimeZone,
+      dryRun
+    )
   } catch (error) {
     if (!(error instanceof Error)) error = new Error(String(error))
     core.setFailed(error as Error)

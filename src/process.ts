@@ -13,14 +13,19 @@ const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae'
 
 export default async function processFile(
   filen: FilenSDK,
-  filePath: string,
+  writeAccess: Mutex,
+  rootPath: string,
+  fileName: string,
+  destPath: string = '',
   dirPattern: string = 'yyyy-MM',
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
-  writeAccess: Mutex,
+  convertHeic: boolean = true,
+  keepOriginal: boolean = false,
   dryRun: boolean = false
 ): Promise<void> {
-  const fileName: string = posix.basename(filePath)
-  const rootPath: string = posix.dirname(filePath)
+  const filePath: string = posix.join(rootPath, fileName)
+  const srcPath: string = fileName
+  fileName = posix.basename(fileName)
   let fileExt: string = posix.extname(fileName)
 
   try {
@@ -142,11 +147,11 @@ export default async function processFile(
 
     // Make path names
     const newDirName: string = dirPattern ? dateTaken!.toFormat(dirPattern) : ''
-    const newDirPath: string = posix.join(rootPath, newDirName)
+    const newDirPath: string = posix.resolve(rootPath, destPath, newDirName)
     let newBaseName: string = filePattern ? dateTaken!.toFormat(filePattern) : posix.basename(filePath, fileExt)
 
     // Convert HEIF
-    if (mime === 'image/heic' || mime === 'image/heif') {
+    if ((mime === 'image/heic' || mime === 'image/heif') && convertHeic) {
       try {
         fileContents = (await convert(fileContents!)) as Buffer
       } catch (e) {
@@ -187,10 +192,11 @@ export default async function processFile(
           const checkFileContents: Buffer = await filen.fs().readFile({
             path: posix.join(newDirPath, checkFileName),
           })
-          // Files are identical: Abort and delete one
+          // Files are identical: Abort and skip/delete one
           if (!fileContents.compare(checkFileContents)) {
-            console.log(`Delete '${fileName}', because it already exists as '${posix.join(newDirName, checkFileName)}'`)
-            if (!dryRun) {
+            const operation = keepOriginal ? 'Skip' : 'Delete'
+            console.log(`${operation} '${srcPath}', because it already exists as '${posix.join(newDirName, checkFileName)}'`)
+            if (!dryRun && !keepOriginal) {
               await filen.fs().unlink({
                 path: filePath,
                 permanent: false,
@@ -209,12 +215,12 @@ export default async function processFile(
         newBaseName += '_' + String(idxNext).padStart(3, '0')
       }
 
-      // Rename (move) or upload and delete (convert)
+      // Rename (move/copy) or upload and delete (convert)
       const newFileName: string = `${newBaseName}${fileExt}`
-      const newFileSubpath: string = posix.join(newDirName, newFileName)
-      const newFilePath: string = posix.join(rootPath, newFileSubpath)
-      if (mime === 'image/heic' || mime === 'image/heif') {
-        console.log(`Convert '${fileName}' to '${newFileSubpath}'`)
+      const newFilePath: string = posix.resolve(rootPath, destPath, newDirName, newFileName)
+      const newFileSubpath: string = posix.relative(rootPath, newFilePath)
+      if ((mime === 'image/heic' || mime === 'image/heif') && convertHeic) {
+        console.log(`Convert '${srcPath}' to '${newFileSubpath}'`)
         if (!dryRun) {
           // In order to retain the modification date, write the file locally, upload it, and delete the local file
           const localTmpDirPath: string = posix.join(filen.config.tmpPath || os.tmpdir(), 'filen-sdk', 'filen-photo-organizer')
@@ -228,18 +234,28 @@ export default async function processFile(
           })
           fs.unlinkSync(localTmpFilePath)
 
-          await filen.fs().unlink({
-            path: filePath,
-            permanent: false,
-          })
+          if (!keepOriginal) {
+            await filen.fs().unlink({
+              path: filePath,
+              permanent: false,
+            })
+          }
         }
       } else {
-        console.log(`Move '${fileName}' to '${newFileSubpath}'`)
+        const operation = keepOriginal ? 'Copy' : 'Move'
+        console.log(`${operation} '${srcPath}' to '${newFileSubpath}'`)
         if (!dryRun) {
-          await filen.fs().rename({
-            from: filePath,
-            to: newFilePath,
-          })
+          if (keepOriginal) {
+            await filen.fs().copy({
+              from: filePath,
+              to: newFilePath,
+            })
+          } else {
+            await filen.fs().rename({
+              from: filePath,
+              to: newFilePath,
+            })
+          }
         }
       }
     } finally {

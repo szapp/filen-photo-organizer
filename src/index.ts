@@ -14,6 +14,10 @@ interface Return {
 export default async function organizePhotos(
   credentials: { email: string; password: string; twoFactorCode: string | undefined; twoFactorSecret: string | undefined },
   rootPath: string,
+  recursive: boolean = false,
+  convertHeic: boolean = true,
+  keepOriginals: boolean = false,
+  destPath: string = '',
   dirPattern: string = 'yyyy-MM',
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
   fallbackTimeZone: string = 'Europe/Berlin', // Filen.io location
@@ -26,6 +30,12 @@ export default async function organizePhotos(
   // Update time zone
   Settings.defaultZone = fallbackTimeZone
   if (DateTime.local().zoneName === null) throw new Error('Error: Invalid time zone. Please specify a valid IANA zone')
+
+  // Prevent recursive infinite loop
+  const potentialDestDir = posix.join(destPath, dirPattern)
+  if (recursive && !potentialDestDir.startsWith('/') && !potentialDestDir.startsWith('..')) {
+    throw new Error('Error: Destination cannot be inside the root directory when recursive is set to true')
+  }
 
   // Report
   let numFiles: number = 0
@@ -46,6 +56,7 @@ export default async function organizePhotos(
     // Read directory
     let dirContents: string[] = await filen.fs().readdir({
       path: rootPath,
+      recursive: recursive,
     })
 
     // Exclude directories by inspecting file extensions
@@ -57,7 +68,7 @@ export default async function organizePhotos(
     console.log(`Process ${dirContents.length} files in '${rootPath}'`)
     const processOutputs: PromiseSettledResult<void>[] = await Promise.allSettled(
       dirContents.map((fileName: string) =>
-        processFile(filen, posix.join(rootPath, fileName), dirPattern, filePattern, writeAccess, dryRun)
+        processFile(filen, writeAccess, rootPath, fileName, destPath, dirPattern, filePattern, convertHeic, keepOriginals, dryRun)
       )
     )
 

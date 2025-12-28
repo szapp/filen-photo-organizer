@@ -13,9 +13,10 @@ const os_1 = __importDefault(require("os"));
 const path_1 = require("path");
 const uuid_1 = require("uuid");
 const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae';
-async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', writeAccess, dryRun = false) {
-    const fileName = path_1.posix.basename(filePath);
-    const rootPath = path_1.posix.dirname(filePath);
+async function processFile(filen, writeAccess, rootPath, fileName, destPath = '', dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', convertHeic = true, keepOriginal = false, dryRun = false) {
+    const filePath = path_1.posix.join(rootPath, fileName);
+    const srcPath = fileName;
+    fileName = path_1.posix.basename(fileName);
     let fileExt = path_1.posix.extname(fileName);
     try {
         // Only operate on files
@@ -47,8 +48,8 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                     pick: ['DateTimeOriginal', 'OffsetTimeOriginal'],
                     reviveValues: false,
                 });
-                const exifDate = meta === null || meta === void 0 ? void 0 : meta.DateTimeOriginal;
-                const tzOffset = meta === null || meta === void 0 ? void 0 : meta.OffsetTimeOriginal;
+                const exifDate = meta?.DateTimeOriginal;
+                const tzOffset = meta?.OffsetTimeOriginal;
                 // Obtain time zone
                 if (typeof tzOffset === 'string' && tzOffset.match(/^[+-]\d{2}:\d{2}$/) && luxon_1.DateTime.now().setZone(`utc${tzOffset}`).isValid) {
                     tz = `utc${tzOffset}`;
@@ -62,7 +63,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                             tz = tzCandidates[0];
                         }
                     }
-                    catch (_a) {
+                    catch {
                         // Fall back and assume default time zone
                     }
                 }
@@ -80,7 +81,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                             .split(/[-: ]/g)
                             .map((ele) => (typeof ele === 'string' ? Number(ele) : undefined));
                         if (typeof year !== 'undefined' && month && day) {
-                            exifDateParsed = luxon_1.DateTime.fromObject({ year, month, day, hour: hour !== null && hour !== void 0 ? hour : 12, minute, second }, { zone: tz });
+                            exifDateParsed = luxon_1.DateTime.fromObject({ year, month, day, hour: hour ?? 12, minute, second }, { zone: tz });
                         }
                     }
                     if (exifDateParsed.isValid)
@@ -103,7 +104,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                         year += year > currentYear ? 1900 : 2000;
                     }
                     // Ensure correct timezone for comparison
-                    const fileNameDate = luxon_1.DateTime.fromObject({ year, month, day, hour: hour !== null && hour !== void 0 ? hour : 12, minute, second }, { zone: tz });
+                    const fileNameDate = luxon_1.DateTime.fromObject({ year, month, day, hour: hour ?? 12, minute, second }, { zone: tz });
                     // Cross-check if date matches file times
                     const sameDayCreated = fileNameDate.hasSame(dateCreated, 'day');
                     const sameDayModified = fileNameDate.hasSame(dateModified, 'day');
@@ -124,15 +125,15 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         }
         // Make path names
         const newDirName = dirPattern ? dateTaken.toFormat(dirPattern) : '';
-        const newDirPath = path_1.posix.join(rootPath, newDirName);
+        const newDirPath = path_1.posix.resolve(rootPath, destPath, newDirName);
         let newBaseName = filePattern ? dateTaken.toFormat(filePattern) : path_1.posix.basename(filePath, fileExt);
         // Convert HEIF
-        if (mime === 'image/heic' || mime === 'image/heif') {
+        if ((mime === 'image/heic' || mime === 'image/heif') && convertHeic) {
             try {
                 fileContents = (await (0, heic_jpg_exif_1.default)(fileContents));
             }
             catch (e) {
-                if (!(e instanceof Error) || (e === null || e === void 0 ? void 0 : e.message) !== 'Input is already a JPEG image')
+                if (!(e instanceof Error) || e?.message !== 'Input is already a JPEG image')
                     throw e;
                 mime = 'image/jpeg';
             }
@@ -148,7 +149,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                     path: newDirPath,
                 });
             }
-            catch (_b) {
+            catch {
                 newDirContents = [];
             }
             const fileNamePattern = new RegExp(`^${newBaseName}(?:_(?<index>\\d{3}))?${fileExt}$`);
@@ -168,10 +169,11 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                     const checkFileContents = await filen.fs().readFile({
                         path: path_1.posix.join(newDirPath, checkFileName),
                     });
-                    // Files are identical: Abort and delete one
+                    // Files are identical: Abort and skip/delete one
                     if (!fileContents.compare(checkFileContents)) {
-                        console.log(`Delete '${fileName}', because it already exists as '${path_1.posix.join(newDirName, checkFileName)}'`);
-                        if (!dryRun) {
+                        const operation = keepOriginal ? 'Skip' : 'Delete';
+                        console.log(`${operation} '${srcPath}', because it already exists as '${path_1.posix.join(newDirName, checkFileName)}'`);
+                        if (!dryRun && !keepOriginal) {
                             await filen.fs().unlink({
                                 path: filePath,
                                 permanent: false,
@@ -185,16 +187,16 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                     return;
                 // Find the next lowest available suffix index
                 const idxCandidates = [...Array(newDirContents.length + 2).keys()];
-                const idxTaken = newDirContents.map((item) => { var _a, _b, _c; return Number((_c = (_b = (_a = item.match(fileNamePattern)) === null || _a === void 0 ? void 0 : _a.groups) === null || _b === void 0 ? void 0 : _b.index) !== null && _c !== void 0 ? _c : '000'); });
+                const idxTaken = newDirContents.map((item) => Number(item.match(fileNamePattern)?.groups?.index ?? '000'));
                 const idxNext = Math.min(...idxCandidates.filter((x) => x && !idxTaken.includes(x)));
                 newBaseName += '_' + String(idxNext).padStart(3, '0');
             }
-            // Rename (move) or upload and delete (convert)
+            // Rename (move/copy) or upload and delete (convert)
             const newFileName = `${newBaseName}${fileExt}`;
-            const newFileSubpath = path_1.posix.join(newDirName, newFileName);
-            const newFilePath = path_1.posix.join(rootPath, newFileSubpath);
-            if (mime === 'image/heic' || mime === 'image/heif') {
-                console.log(`Convert '${fileName}' to '${newFileSubpath}'`);
+            const newFilePath = path_1.posix.resolve(rootPath, destPath, newDirName, newFileName);
+            const newFileSubpath = path_1.posix.relative(rootPath, newFilePath);
+            if ((mime === 'image/heic' || mime === 'image/heif') && convertHeic) {
+                console.log(`Convert '${srcPath}' to '${newFileSubpath}'`);
                 if (!dryRun) {
                     // In order to retain the modification date, write the file locally, upload it, and delete the local file
                     const localTmpDirPath = path_1.posix.join(filen.config.tmpPath || os_1.default.tmpdir(), 'filen-sdk', 'filen-photo-organizer');
@@ -208,19 +210,30 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
                         source: localTmpFilePath,
                     });
                     fs_1.default.unlinkSync(localTmpFilePath);
-                    await filen.fs().unlink({
-                        path: filePath,
-                        permanent: false,
-                    });
+                    if (!keepOriginal) {
+                        await filen.fs().unlink({
+                            path: filePath,
+                            permanent: false,
+                        });
+                    }
                 }
             }
             else {
-                console.log(`Move '${fileName}' to '${newFileSubpath}'`);
+                const operation = keepOriginal ? 'Copy' : 'Move';
+                console.log(`${operation} '${srcPath}' to '${newFileSubpath}'`);
                 if (!dryRun) {
-                    await filen.fs().rename({
-                        from: filePath,
-                        to: newFilePath,
-                    });
+                    if (keepOriginal) {
+                        await filen.fs().copy({
+                            from: filePath,
+                            to: newFilePath,
+                        });
+                    }
+                    else {
+                        await filen.fs().rename({
+                            from: filePath,
+                            to: newFilePath,
+                        });
+                    }
                 }
             }
         }
@@ -233,9 +246,9 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         let message;
         if (e instanceof Error) {
             const err = e;
-            message = `${(err === null || err === void 0 ? void 0 : err.message) || e}`;
-            if ((err === null || err === void 0 ? void 0 : err.name) !== 'Error')
-                message += ` (${err === null || err === void 0 ? void 0 : err.name})`;
+            message = `${err?.message || e}`;
+            if (err?.name !== 'Error')
+                message += ` (${err?.name})`;
         }
         else {
             message = String(e);
@@ -245,7 +258,7 @@ async function processFile(filen, filePath, dirPattern = 'yyyy-MM', filePattern 
         try {
             error.stack = undefined;
         }
-        catch (_c) {
+        catch {
             // If stack not supported
         }
         throw error;
