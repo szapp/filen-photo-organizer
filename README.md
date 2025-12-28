@@ -70,7 +70,7 @@ Moving from V1 to V2 requires updating the action inputs `dirPattern` and `fileP
 For manual usage of the GitHub Action in a workflow, here is a minimal example with explanations
 
 ```yml
-- uses: szapp/filen-photo-organizer@v3
+- uses: szapp/filen-photo-organizer@v4
   with:
     # User login email of filen.io account
     # Required

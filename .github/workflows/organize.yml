@@ -23,13 +23,17 @@ jobs:
     name: Organize photos
     runs-on: ubuntu-latest
     steps:
-      - uses: szapp/filen-photo-organizer@v3
+      - uses: szapp/filen-photo-organizer@v4
         with:
           email: ${{ secrets.FILEN_EMAIL }}
           password: ${{ secrets.FILEN_PASSWORD }}
           twoFactorCode: ''
           twoFactorSecret: ${{ secrets.FILEN_TFA }}
           rootPath: ${{ vars.ROOT_PATH }}
+          recursive: true
+          convertHeic: true
+          keepOriginals: true
+          destinationPath: ${{ vars.DESTINATION_PATH }}
           dirPattern: ${{ vars.DIR_PATTERN }}
           filePattern: ${{ vars.FILE_PATTERN }}
           fallbackTimeZone: ${{ vars.FALLBACK_TIME_ZONE }}
