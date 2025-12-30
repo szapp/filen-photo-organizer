@@ -62,6 +62,7 @@ dryRun = false) {
     let numErrors = 0;
     let errors = [];
     try {
+        console.debug('Log in');
         await filen.login({
             email: credentials.email,
             password: credentials.password,
@@ -71,20 +72,45 @@ dryRun = false) {
                     ? new OTPAuth.TOTP({ secret: credentials.twoFactorSecret }).generate()
                     : undefined,
         });
-        // Read directory
-        let dirContents = await filen.fs().readdir({
+        // Read directory and stats of each child
+        console.debug('Walk directory tree');
+        const dirContents = await filen.fs().readdir({
             path: rootPath,
             recursive: recursive,
         });
-        // Exclude directories by inspecting file extensions
-        dirContents = dirContents.filter((name) => name.indexOf('.') !== -1).sort();
+        const entries = await Promise.all(dirContents.map(async (name) => {
+            const stats = await filen.fs().stat({ path: path_1.posix.join(rootPath, name) });
+            return { name, stats };
+        }));
+        // Read index from file
+        console.debug('Read index');
+        const indexName = '.filen-photo-organizer.index';
+        const indexPath = path_1.posix.join(rootPath, indexName);
+        const indexBuffer = await filen
+            .fs()
+            .readFile({ path: indexPath })
+            .catch(() => Buffer.from(''));
+        const uuids = indexBuffer.toString('utf-8').split(/\r?\n/).filter(Boolean);
+        const index = new Set(uuids);
+        // Filter new files (i.e. files not in index)
+        console.debug('Filter new files');
+        const newFiles = entries.filter(({ stats }) => stats.isFile() && !index.has(stats.uuid) && !stats.name.startsWith('.'));
         // Individually process each file asynchronously
         // Nevertheless, create a mutex for writing operations to avoid file name collisions
         const writeAccess = new async_mutex_1.Mutex(new Error('Something went wrong with the mutex!'));
-        console.log(`Process ${dirContents.length} files in '${rootPath}'`);
-        const processOutputs = await Promise.allSettled(dirContents.map((fileName) => (0, process_js_1.default)(filen, writeAccess, rootPath, fileName, destPath, dirPattern, filePattern, convertHeic, keepOriginals, dryRun)));
+        console.log(`Process ${newFiles.length} files in '${rootPath}'`);
+        const processOutputs = await Promise.allSettled(newFiles.map(({ name, stats }) => (0, process_js_1.default)(filen, writeAccess, rootPath, name, stats, destPath, dirPattern, filePattern, convertHeic, keepOriginals, dryRun)));
+        // Update index with successful files and write index to disk
+        newFiles.filter((_, i) => processOutputs[i].status === 'fulfilled').forEach(({ stats }) => index.add(stats.uuid));
+        if (newFiles.length > 0 && !dryRun) {
+            console.log('Update index');
+            await filen.fs().writeFile({
+                path: indexPath,
+                content: Buffer.from([...index].join('\n')),
+            });
+        }
         // Collect rate of success
-        numFiles = dirContents.length;
+        numFiles = newFiles.length;
         errors = processOutputs
             .filter((p) => p.status === 'rejected')
             .reduce((out, p) => out.concat(p.reason), [])

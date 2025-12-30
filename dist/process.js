@@ -13,18 +13,12 @@ const os_1 = __importDefault(require("os"));
 const path_1 = require("path");
 const uuid_1 = require("uuid");
 const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae';
-async function processFile(filen, writeAccess, rootPath, fileName, destPath = '', dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', convertHeic = true, keepOriginal = false, dryRun = false) {
+async function processFile(filen, writeAccess, rootPath, fileName, stats, destPath = '', dirPattern = 'yyyy-MM', filePattern = 'yyyy-MM-dd_HH.mm.ss', convertHeic = true, keepOriginal = false, dryRun = false) {
     const filePath = path_1.posix.join(rootPath, fileName);
     const srcPath = fileName;
     fileName = path_1.posix.basename(fileName);
     let fileExt = path_1.posix.extname(fileName);
     try {
-        // Only operate on files
-        const stats = await filen.fs().stat({
-            path: filePath,
-        });
-        if (!stats.isFile())
-            return;
         let dateTaken;
         let fileContents;
         let tz = luxon_1.DateTime.now().zoneName;

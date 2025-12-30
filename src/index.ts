@@ -43,6 +43,7 @@ export default async function organizePhotos(
   let errors: string[] = []
 
   try {
+    console.debug('Log in')
     await filen.login({
       email: credentials.email,
       password: credentials.password,
@@ -53,27 +54,56 @@ export default async function organizePhotos(
           : undefined,
     })
 
-    // Read directory
-    let dirContents: string[] = await filen.fs().readdir({
+    // Read directory and stats of each child
+    console.debug('Walk directory tree')
+    const dirContents: string[] = await filen.fs().readdir({
       path: rootPath,
       recursive: recursive,
     })
+    const entries = await Promise.all(
+      dirContents.map(async (name) => {
+        const stats = await filen.fs().stat({ path: posix.join(rootPath, name) })
+        return { name, stats }
+      })
+    )
 
-    // Exclude directories by inspecting file extensions
-    dirContents = dirContents.filter((name) => name.indexOf('.') !== -1).sort()
+    // Read index from file
+    console.debug('Read index')
+    const indexName = '.filen-photo-organizer.index'
+    const indexPath = posix.join(rootPath, indexName)
+    const indexBuffer = await filen
+      .fs()
+      .readFile({ path: indexPath })
+      .catch(() => Buffer.from(''))
+    const uuids = indexBuffer.toString('utf-8').split(/\r?\n/).filter(Boolean)
+    const index: Set<string> = new Set(uuids)
+
+    // Filter new files (i.e. files not in index)
+    console.debug('Filter new files')
+    const newFiles = entries.filter(({ stats }) => stats.isFile() && !index.has(stats.uuid) && !stats.name.startsWith('.'))
 
     // Individually process each file asynchronously
     // Nevertheless, create a mutex for writing operations to avoid file name collisions
     const writeAccess: Mutex = new Mutex(new Error('Something went wrong with the mutex!'))
-    console.log(`Process ${dirContents.length} files in '${rootPath}'`)
+    console.log(`Process ${newFiles.length} files in '${rootPath}'`)
     const processOutputs: PromiseSettledResult<void>[] = await Promise.allSettled(
-      dirContents.map((fileName: string) =>
-        processFile(filen, writeAccess, rootPath, fileName, destPath, dirPattern, filePattern, convertHeic, keepOriginals, dryRun)
+      newFiles.map(({ name, stats }) =>
+        processFile(filen, writeAccess, rootPath, name, stats, destPath, dirPattern, filePattern, convertHeic, keepOriginals, dryRun)
       )
     )
 
+    // Update index with successful files and write index to disk
+    newFiles.filter((_, i) => processOutputs[i].status === 'fulfilled').forEach(({ stats }) => index.add(stats.uuid))
+    if (newFiles.length > 0 && !dryRun) {
+      console.log('Update index')
+      await filen.fs().writeFile({
+        path: indexPath,
+        content: Buffer.from([...index].join('\n')),
+      })
+    }
+
     // Collect rate of success
-    numFiles = dirContents.length
+    numFiles = newFiles.length
     errors = processOutputs
       .filter((p) => p.status === 'rejected')
       .reduce((out, p) => out.concat((p as PromiseRejectedResult).reason), [])
