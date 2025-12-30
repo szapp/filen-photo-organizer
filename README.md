@@ -38,6 +38,10 @@ This repository contains a GitHub Action that can be used without any coding kno
 
 The setup is explained in an easy to clone template repository at https://github.com/szapp/filen-photo-organizer-template. Click the link or the button above and follow the instructions there.
 
+### V5
+
+Significantly improve performance by building a file index to keep a record of previously processed files.
+
 ### V4
 
 Allow retaining the original files, to recurse into sub-directories, and to turn off HEIC/HEIF conversion.
@@ -70,7 +74,7 @@ Moving from V1 to V2 requires updating the action inputs `dirPattern` and `fileP
 For manual usage of the GitHub Action in a workflow, here is a minimal example with explanations
 
 ```yml
-- uses: szapp/filen-photo-organizer@v4
+- uses: szapp/filen-photo-organizer@v5
   with:
     # User login email of filen.io account
     # Required
