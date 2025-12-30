@@ -23,7 +23,7 @@ jobs:
     name: Organize photos
     runs-on: ubuntu-latest
     steps:
-      - uses: szapp/filen-photo-organizer@v4
+      - uses: szapp/filen-photo-organizer@v5
         with:
           email: ${{ secrets.FILEN_EMAIL }}
           password: ${{ secrets.FILEN_PASSWORD }}

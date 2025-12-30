@@ -16,6 +16,7 @@ export default async function processFile(
   writeAccess: Mutex,
   rootPath: string,
   fileName: string,
+  stats: FSStats,
   destPath: string = '',
   dirPattern: string = 'yyyy-MM',
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
@@ -29,12 +30,6 @@ export default async function processFile(
   let fileExt: string = posix.extname(fileName)
 
   try {
-    // Only operate on files
-    const stats: FSStats = await filen.fs().stat({
-      path: filePath,
-    })
-    if (!stats.isFile()) return
-
     let dateTaken: DateTime
     let fileContents: Buffer
     let tz: string = DateTime.now().zoneName
