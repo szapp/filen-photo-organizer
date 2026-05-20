@@ -24,13 +24,13 @@ inputs:
     description: >
       Recurse into subdirectories when collecting files.
       If true, 'destinationPath' must be provided to prevent infinite recursion.
-    default: false
+    default: 'false'
   convertHeic:
     description: 'Convert HEIC/HEIF photos to JPG'
-    default: true
+    default: 'true'
   keepOriginals:
     description: 'Keep the original files instead of moving/deleting them'
-    default: false
+    default: 'false'
   destinationPath:
     description: >
       Path to the destination relative to 'rootPath'. An absolute path is possible via posix path, i.e. leading forward slash.
@@ -53,7 +53,7 @@ inputs:
     default: 'Europe/Berlin'
   dryRun:
     description: 'Do not perform write operations on the filen.io'
-    default: false
+    default: 'false'
 runs:
   using: node24
   main: 'action/dist/index.js'

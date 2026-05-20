@@ -1,12 +1,12 @@
-import { Mutex } from 'async-mutex'
+import fs from 'node:fs'
+import os from 'node:os'
+import { posix } from 'node:path'
+import type { FileMetadata, FilenSDK, FSStats } from '@filen/sdk'
+import type { Mutex } from 'async-mutex'
 import exifr from 'exifr'
-import FilenSDK, { FSStats, FileMetadata } from '@filen/sdk'
-import fs from 'fs'
 import { find } from 'geo-tz'
 import convert from 'heic-jpg-exif'
 import { DateTime } from 'luxon'
-import os from 'os'
-import { posix } from 'path'
 import { v5 as uuidv5 } from 'uuid'
 
 const UNIQUE_FILENAME_NAMESPACE = 'fa3d2ab8-2a92-44fd-96b7-1a85861159ae'
@@ -22,7 +22,7 @@ export default async function processFile(
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
   convertHeic: boolean = true,
   keepOriginal: boolean = false,
-  dryRun: boolean = false
+  dryRun: boolean = false,
 ): Promise<void> {
   const filePath: string = posix.join(rootPath, fileName)
   const srcPath: string = fileName
@@ -30,8 +30,8 @@ export default async function processFile(
   let fileExt: string = posix.extname(fileName)
 
   try {
-    let dateTaken: DateTime
-    let fileContents: Buffer
+    let dateTaken: DateTime | undefined
+    let fileContents: Buffer | undefined
     let tz: string = DateTime.now().zoneName
     let { mime } = stats as FileMetadata
 
@@ -103,9 +103,13 @@ export default async function processFile(
       }
 
       // Fall back to date in file name or file creation date or file modification date
-      if (!dateTaken!) {
-        const dateCreated: DateTime = DateTime.fromMillis(stats.birthtimeMs, { zone: 'utc' }).setZone(tz)
-        const dateModified: DateTime = DateTime.fromMillis(stats.mtimeMs, { zone: 'utc' }).setZone(tz)
+      if (!dateTaken) {
+        const dateCreated: DateTime = DateTime.fromMillis(stats.birthtimeMs, {
+          zone: 'utc',
+        }).setZone(tz)
+        const dateModified: DateTime = DateTime.fromMillis(stats.mtimeMs, {
+          zone: 'utc',
+        }).setZone(tz)
         const baseName: string = posix.basename(fileName, fileExt)
         const regex =
           /(?<!\d)(?<year>(?:19|20)?\d{2})(?:_|-|\.)?(?<month>0[1-9]|1[0-2])(?:_|-|\.)?(?<day>[0-3]\d)(?:_|-|\.)?(?<hour>[0-1][0-9]|2[0-4])?(?:_|-|\.)?(?<min>[0-6]\d)?(?:_|-|\.)?(?<sec>[0-6]\d)?/
@@ -121,7 +125,7 @@ export default async function processFile(
           }
           const res = match.groups as unknown as ReDateMatch
           const [yy, month, day, hour, minute, second] = Object.values(res).map((ele) =>
-            typeof ele === 'string' ? Number(ele) : undefined
+            typeof ele === 'string' ? Number(ele) : undefined,
           )
           let year: number = Number(yy)
           if (year < 100) {
@@ -146,14 +150,14 @@ export default async function processFile(
     }
 
     // Make path names
-    const newDirName: string = dirPattern ? dateTaken!.toFormat(dirPattern) : ''
+    const newDirName: string = dirPattern ? (dateTaken?.toFormat(dirPattern) ?? '') : ''
     const newDirPath: string = posix.resolve(rootPath, destPath, newDirName)
-    let newBaseName: string = filePattern ? dateTaken!.toFormat(filePattern) : posix.basename(filePath, fileExt)
+    let newBaseName: string = filePattern ? (dateTaken?.toFormat(filePattern) ?? '') : posix.basename(filePath, fileExt)
 
     // Convert HEIF
     if ((mime === 'image/heic' || mime === 'image/heif') && convertHeic) {
       try {
-        fileContents = (await convert(fileContents!)) as Buffer
+        fileContents = (await convert.default(fileContents ?? '')) as Buffer
       } catch (e) {
         if (!(e instanceof Error) || (e as Error)?.message !== 'Input is already a JPEG image') throw e
         mime = 'image/jpeg'
@@ -179,7 +183,7 @@ export default async function processFile(
       // If there are files with similar file name, check for identical files
       if (newDirContents.length > 0) {
         // Load the current file into memory for comparison
-        if (!fileContents!) {
+        if (!fileContents) {
           fileContents = await filen.fs().readFile({
             path: filePath,
           })
@@ -212,7 +216,7 @@ export default async function processFile(
         const idxCandidates: number[] = [...Array(newDirContents.length + 2).keys()]
         const idxTaken: number[] = newDirContents.map((item: string) => Number(item.match(fileNamePattern)?.groups?.index ?? '000'))
         const idxNext: number = Math.min(...idxCandidates.filter((x) => x && !idxTaken.includes(x)))
-        newBaseName += '_' + String(idxNext).padStart(3, '0')
+        newBaseName += `_${String(idxNext).padStart(3, '0')}`
       }
 
       // Rename (move/copy) or upload and delete (convert)
@@ -226,7 +230,7 @@ export default async function processFile(
           const localTmpDirPath: string = posix.join(filen.config.tmpPath || os.tmpdir(), 'filen-sdk', 'filen-photo-organizer')
           const localTmpFilePath: string = posix.join(localTmpDirPath, uuidv5(filePath, UNIQUE_FILENAME_NAMESPACE))
           if (!fs.existsSync(localTmpDirPath)) fs.mkdirSync(localTmpDirPath, { recursive: true })
-          fs.writeFileSync(localTmpFilePath, fileContents!)
+          fs.writeFileSync(localTmpFilePath, fileContents ?? '')
           fs.utimesSync(localTmpFilePath, stats.birthtimeMs / 1000, stats.mtimeMs / 1000)
           await filen.fs().upload({
             path: newFilePath,

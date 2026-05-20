@@ -1,8 +1,8 @@
+import { posix } from 'node:path'
+import { FilenSDK } from '@filen/sdk'
 import { Mutex } from 'async-mutex'
-import FilenSDK from '@filen/sdk'
 import { DateTime, Settings } from 'luxon'
 import * as OTPAuth from 'otpauth'
-import { posix } from 'path'
 import processFile from './process.js'
 
 interface Return {
@@ -12,7 +12,12 @@ interface Return {
 }
 
 export default async function organizePhotos(
-  credentials: { email: string; password: string; twoFactorCode: string | undefined; twoFactorSecret: string | undefined },
+  credentials: {
+    email: string
+    password: string
+    twoFactorCode: string | undefined
+    twoFactorSecret: string | undefined
+  },
   rootPath: string,
   recursive: boolean = false,
   convertHeic: boolean = true,
@@ -21,7 +26,7 @@ export default async function organizePhotos(
   dirPattern: string = 'yyyy-MM',
   filePattern: string = 'yyyy-MM-dd_HH.mm.ss',
   fallbackTimeZone: string = 'Europe/Berlin', // Filen.io location
-  dryRun: boolean = false
+  dryRun: boolean = false,
 ): Promise<Return> {
   const filen: FilenSDK = new FilenSDK({
     metadataCache: true,
@@ -64,7 +69,7 @@ export default async function organizePhotos(
       dirContents.map(async (name) => {
         const stats = await filen.fs().stat({ path: posix.join(rootPath, name) })
         return { name, stats }
-      })
+      }),
     )
 
     // Read index from file
@@ -88,12 +93,16 @@ export default async function organizePhotos(
     console.log(`Process ${newFiles.length} files in '${rootPath}'`)
     const processOutputs: PromiseSettledResult<void>[] = await Promise.allSettled(
       newFiles.map(({ name, stats }) =>
-        processFile(filen, writeAccess, rootPath, name, stats, destPath, dirPattern, filePattern, convertHeic, keepOriginals, dryRun)
-      )
+        processFile(filen, writeAccess, rootPath, name, stats, destPath, dirPattern, filePattern, convertHeic, keepOriginals, dryRun),
+      ),
     )
 
     // Update index with successful files and write index to disk
-    newFiles.filter((_, i) => processOutputs[i].status === 'fulfilled').forEach(({ stats }) => index.add(stats.uuid))
+    newFiles
+      .filter((_, i) => processOutputs[i].status === 'fulfilled')
+      .forEach(({ stats }) => {
+        index.add(stats.uuid)
+      })
     if (newFiles.length > 0 && !dryRun) {
       console.log('Update index')
       await filen.fs().writeFile({

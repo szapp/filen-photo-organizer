@@ -2,14 +2,17 @@
   "name": "filen-photo-organizer-action",
   "version": "5.0.0",
   "description": "GitHub action that organizes photos in filen.io drive",
-  "main": "lib/main.js",
-  "scripts": {
-    "build": "tsc && ncc build --license licenses.txt"
-  },
+  "author": "Sören Zapp",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/szapp/filen-photo-organizer.git"
   },
+  "bugs": {
+    "url": "https://github.com/szapp/filen-photo-organizer/issues"
+  },
+  "homepage": "https://github.com/szapp/filen-photo-organizer#readme",
+  "funding": "https://ko-fi.com/szapp",
   "keywords": [
     "github",
     "actions",
@@ -18,25 +21,23 @@
     "photos",
     "organizer"
   ],
-  "author": "Sören Zapp",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/szapp/filen-photo-organizer/issues"
+  "main": "lib/main.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && ncc build --source-map --license licenses.txt"
   },
-  "homepage": "https://github.com/szapp/filen-photo-organizer#readme",
-  "funding": "https://ko-fi.com/szapp",
   "engines": {
-    "node": ">=20.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^25.0.3",
-    "@vercel/ncc": "^0.38.4",
-    "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "@actions/core": "^2.0.1"
+    "node": ">=24.0.0"
   },
   "volta": {
-    "node": "24.12.0"
+    "node": "24.15.0"
+  },
+  "dependencies": {
+    "@actions/core": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@vercel/ncc": "^0.38.4",
+    "typescript": "^6.0.3"
   }
 }

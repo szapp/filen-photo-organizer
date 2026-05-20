@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import organizePhotos from '../../'
+import organizePhotos from '../../dist/index.js'
 
 async function run(): Promise<void> {
   const credentials: {
@@ -9,7 +9,10 @@ async function run(): Promise<void> {
     twoFactorSecret: string
   } = {
     email: core.getInput('email', { required: true }),
-    password: core.getInput('password', { required: true, trimWhitespace: false }),
+    password: core.getInput('password', {
+      required: true,
+      trimWhitespace: false,
+    }),
     twoFactorCode: core.getInput('twoFactorCode'),
     twoFactorSecret: core.getInput('twoFactorSecret'),
   }
@@ -35,11 +38,11 @@ async function run(): Promise<void> {
       dirPattern,
       filePattern,
       fallbackTimeZone,
-      dryRun
+      dryRun,
     )
   } catch (error) {
-    if (!(error instanceof Error)) error = new Error(String(error))
-    core.setFailed(error as Error)
+    if (error instanceof Error) core.setFailed(error)
+    else core.setFailed(new Error(String(error)))
     return
   }
   const { numFiles, numErrors, errors } = result
